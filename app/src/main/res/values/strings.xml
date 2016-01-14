@@ -1,0 +1,4 @@
+<resources>
+    <string name="app_name">Unblock 163 Music Client</string>
+    <string name="xposed_description">Just for test</string>
+</resources>

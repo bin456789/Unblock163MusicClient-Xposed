@@ -1,0 +1,43 @@
+apply plugin: 'com.android.application'
+
+Properties props = new Properties()
+props.load(new FileInputStream(file("../private/signing.properties")))
+
+android {
+    compileSdkVersion 23
+    buildToolsVersion "23.0.2"
+
+    signingConfigs {
+        config {
+            try {
+                keyAlias props['KEY_ALIAS']
+                keyPassword props['KEY_PASSWORD']
+                storeFile file(props['STORE_FILE'])
+                storePassword props['STORE_PASSWORD']
+            }
+            catch (ex) {
+                throw new InvalidUserDataException(ex.message + " You should define KEY_ALIAS, KEY_PASSWORD, STORE_FILE and STORE_PASSWORD in signing.properties.")
+            }
+        }
+    }
+
+    defaultConfig {
+        applicationId "bin.Xposed.Unblock163MusicClient"
+        minSdkVersion 9
+        targetSdkVersion 23
+        versionCode 1
+        versionName "0.0.1"
+    }
+    buildTypes {
+        release {
+            minifyEnabled true
+            shrinkResources true
+            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            signingConfig signingConfigs.config
+        }
+    }
+}
+
+dependencies {
+    provided files('libs/XposedBridgeApi-30.jar')
+}
