@@ -22,7 +22,7 @@ android {
     }
 
     defaultConfig {
-        applicationId "bin.Xposed.Unblock163MusicClient"
+        applicationId "bin.xposed.Unblock163MusicClient"
         minSdkVersion 9
         targetSdkVersion 23
         versionCode 1
