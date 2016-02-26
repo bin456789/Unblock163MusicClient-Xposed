@@ -15,4 +15,10 @@
 #-keepclassmembers class fqcn.of.javascript.interface.for.webview {
 #   public *;
 #}
--keep class *
+
+-dontwarn org.xbill.DNS.spi.DNSJavaNameServiceDescriptor
+-keep public class bin.xposed.Unblock163MusicClient.Main
+-keepclassmembernames class bin.xposed.Unblock163MusicClient.ui.SettingsActivity {
+    int getActivatedModuleVersion();
+}
+

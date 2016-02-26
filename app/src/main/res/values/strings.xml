@@ -1,4 +1,27 @@
+<?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Unblock 163 Music Client</string>
+    <string name="app_name">Volume Booster</string>
     <string name="xposed_description">Just for test</string>
+    <string name="ok">OK</string>
+    <string name="cancel">Cancel</string>
+
+    <string name="pref_hint_hide_icon">Because rarely need to change the configuration, I\'m going to disappear from your launcher.\n\nFind me in \"Xposed Installer\" next time.</string>
+    <string name="pref_hint_reboot_setting_changed">Reboot needed to take effect</string>
+    <string name="pref_hint_reboot_not_active">Module not activated. Please enable this module and reboot your phone.</string>
+
+    <string name="pref_oversea_mode_title">Oversea mode</string>
+    <string name="pref_oversea_mode_description">Don\'t enable if you\'re in the wall. Otherwise streaming will get slow.</string>
+
+    <string name="pref_dns_server_title">DNS server</string>
+
+    <string name="pref_dns_instruction_title">DNS instruction</string>
+    <string name="pref_dns_instruction_description">Click here to find out DNS list.\nTo unblock music, the DNS server should be a China ISP DNS server.\nPublic DNS doesn\'t help for unblocking.</string>
+
+    <string name="pref_dns_test_title">DNS test</string>
+    <string name="dns_testing">DNS testing…</string>
+    <string name="dns_pass">DNS available. And works for unblocking</string>
+    <string name="dns_fail">DNS available. But doesn\'t work for unblocking</string>
+    <string name="dns_unavailable">DNS unavailable</string>
+    <string name="dns_test_interrupted">DNS test interrupted</string>
+
 </resources>

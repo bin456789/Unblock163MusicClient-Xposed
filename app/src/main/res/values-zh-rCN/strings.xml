@@ -1,5 +1,0 @@
-<?xml version="1.0" encoding="utf-8"?>
-<resources>
-    <string name="app_name">音量增强器</string>
-    <string name="xposed_description">仅供测试</string>
-</resources>

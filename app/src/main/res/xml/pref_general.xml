@@ -1,0 +1,31 @@
+<PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
+    <CheckBoxPreference
+        android:defaultValue="false"
+        android:key="OVERSEA_MODE"
+        android:summary="@string/pref_oversea_mode_description"
+        android:title="@string/pref_oversea_mode_title" />
+
+    <bin.xposed.Unblock163MusicClient.ui.IPv4EditTextPreference
+        android:defaultValue="219.141.140.10"
+        android:dependency="OVERSEA_MODE"
+        android:digits="0123456789."
+        android:inputType="numberDecimal"
+        android:key="DNS_SERVER"
+        android:title="@string/pref_dns_server_title" />
+
+    <Preference
+        android:dependency="OVERSEA_MODE"
+        android:key="DNS_INSTRUCTION"
+        android:summary="@string/pref_dns_instruction_description"
+        android:title="@string/pref_dns_instruction_title">
+        <intent
+            android:action="android.intent.action.VIEW"
+            android:data="http://www.ip.cn/dns.html" />
+    </Preference>
+
+    <Preference
+        android:dependency="OVERSEA_MODE"
+        android:key="DNS_TEST"
+        android:title="@string/pref_dns_test_title" />
+
+</PreferenceScreen>

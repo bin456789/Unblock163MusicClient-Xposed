@@ -2,7 +2,32 @@
     xmlns:tools="http://schemas.android.com/tools"
     package="bin.xposed.Unblock163MusicClient">
 
-    <application android:label="@string/app_name">
+    <uses-permission android:name="android.permission.INTERNET" />
+
+    <application
+        android:label="@string/app_name"
+        android:theme="@style/AppTheme">
+
+        <activity
+            android:name=".ui.SettingsActivity"
+            android:label="@string/app_name">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="de.robv.android.xposed.category.MODULE_SETTINGS" />
+            </intent-filter>
+        </activity>
+
+        <activity-alias
+            android:name=".ui.SettingsActivity-Alias"
+            android:enabled="true"
+            android:label="@string/app_name"
+            android:targetActivity=".ui.SettingsActivity">
+            <intent-filter>
+                <action android:name="android.intent.action.MAIN" />
+                <category android:name="android.intent.category.LAUNCHER" />
+            </intent-filter>
+        </activity-alias>
+
         <meta-data
             android:name="xposedmodule"
             android:value="true" />
@@ -14,5 +39,4 @@
             android:name="xposedminversion"
             android:value="30" />
     </application>
-
 </manifest>
