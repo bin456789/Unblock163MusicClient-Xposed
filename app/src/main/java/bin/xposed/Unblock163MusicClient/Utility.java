@@ -138,8 +138,7 @@ final public class Utility {
     }
 
     private static String generateUrl(long fid) {
-        // mark self-generate url with "?" if oversea mode enabled
-        return XposedHelpers.callStaticMethod(CLASS_utils_NeteaseMusicUtils, "a", fid) + (OVERSEA_MODE_ENABLED ? "?" : "");
+        return (String) XposedHelpers.callStaticMethod(CLASS_utils_NeteaseMusicUtils, "a", fid);
     }
 
     protected static boolean setDnsServer(String server) {
@@ -153,7 +152,7 @@ final public class Utility {
     }
 
     protected static String getIpByHost(String domain) throws TextParseException {
-        // caches mechanism is build-in, just look it up
+        // caches mechanism built-in, just look it up
         Lookup lookup = new Lookup(domain, Type.A);
         lookup.setResolver(CN_DNS_RESOVLER);
         if (NEED_TO_CLEAN_DNS_CACHE) {

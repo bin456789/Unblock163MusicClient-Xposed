@@ -88,13 +88,14 @@ public class Main implements IXposedHookLoadPackage {
                                 if (param.args[0] instanceof HttpGet) {
                                     HttpGet httpGet = (HttpGet) param.args[0];
                                     URI uri = httpGet.getURI();
+                                    String path = uri.getPath();
 
-                                    // only process self-generate url (override original url)
-                                    if (uri.toString().endsWith(".mp3?")) {
+                                    // only process self-generate url
+                                    // original music url contains ymusic string, while self-generate url not contain.
+                                    if (path.endsWith(".mp3") && !path.contains("/ymusic/")) {
                                         String host = uri.getHost();
                                         String ip = Utility.getIpByHost(host);
                                         if (ip != null) {
-                                            String path = uri.getPath(); // getPath() returns path without "?"
                                             httpGet.setURI(new URI("http://" + ip + path));
                                             httpGet.setHeader("Host", host);
                                             param.args[0] = httpGet;
