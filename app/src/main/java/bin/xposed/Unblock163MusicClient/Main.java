@@ -42,6 +42,7 @@ public class Main implements IXposedHookLoadPackage {
                                 if (path.startsWith("/eapi/batch")
                                         || path.startsWith("/eapi/v1/artist")
                                         || path.startsWith("/eapi/v1/album")
+                                        || path.startsWith("/eapi/v1/discovery/new/songs")
                                         || path.startsWith("/eapi/v1/play/record")
                                         || path.startsWith("/eapi/v1/search/get")
                                         || path.startsWith("/eapi/v3/playlist/detail")
