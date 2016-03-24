@@ -73,7 +73,6 @@ final public class Utility {
     }
 
     protected static String modifyPlayerApi(String url, String originalContent) throws JSONException, IllegalAccessException, InstantiationException, InvocationTargetException, MalformedURLException {
-        int expectBitrate = Integer.parseInt(Uri.parse(url).getQueryParameter("br"));
         JSONObject originalJson = new JSONObject(originalContent);
         JSONArray originalSongArray = originalJson.getJSONArray("data");
 
@@ -87,6 +86,7 @@ final public class Utility {
         }
 
         if (blockedSongIdList.size() > 0) {
+            int expectBitrate = Integer.parseInt(Uri.parse(url).getQueryParameter("br"));
             JSONObject[] newSongJson = getOneQualityFromSongId(blockedSongIdList, expectBitrate);
             for (int i = 0; i < originalSongArray.length(); i++) {
                 if (originalSongArray.getJSONObject(i).isNull("url")) {
