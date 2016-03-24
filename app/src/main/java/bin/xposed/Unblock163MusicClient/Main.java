@@ -40,14 +40,14 @@ public class Main implements IXposedHookLoadPackage {
                                 String path = url.replace("http://music.163.com", "");
 
                                 if (path.startsWith("/eapi/batch")
+                                        || path.startsWith("/eapi/song/enhance/privilege")
                                         || path.startsWith("/eapi/v1/artist")
                                         || path.startsWith("/eapi/v1/album")
                                         || path.startsWith("/eapi/v1/discovery/new/songs")
                                         || path.startsWith("/eapi/v1/play/record")
                                         || path.startsWith("/eapi/v1/search/get")
                                         || path.startsWith("/eapi/v3/playlist/detail")
-                                        || path.startsWith("/eapi/v3/song/detail")
-                                        || path.startsWith("/eapi/v3/song/enhance/privilege")) {
+                                        || path.startsWith("/eapi/v3/song/detail")) {
                                     String modified = Utility.modifyDetailApi((String) param.getResult());
                                     param.setResult(modified);
 
