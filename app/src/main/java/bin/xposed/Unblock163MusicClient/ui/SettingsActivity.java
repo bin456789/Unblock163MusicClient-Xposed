@@ -22,12 +22,10 @@ import org.xbill.DNS.TextParseException;
 import java.io.IOException;
 import java.net.UnknownHostException;
 
+import bin.xposed.Unblock163MusicClient.Http;
+import bin.xposed.Unblock163MusicClient.Oversea;
 import bin.xposed.Unblock163MusicClient.R;
 import bin.xposed.Unblock163MusicClient.Settings;
-import bin.xposed.Unblock163MusicClient.Utility;
-
-import static bin.xposed.Unblock163MusicClient.Utility.getIpByHostForDnsTest;
-
 
 public class SettingsActivity extends PreferenceActivity implements OnSharedPreferenceChangeListener {
 
@@ -146,8 +144,8 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         protected String doInBackground(String... params) {
             try {
                 String dns = PreferenceManager.getDefaultSharedPreferences(SettingsActivity.this).getString(Settings.DNS_SERVER_KEY, Settings.DNS_SERVER_DEFAULT);
-                String neteaseIp = getIpByHostForDnsTest("m1.music.126.net", dns);
-                String page = Utility.getPage("http://ip.taobao.com/service/getIpInfo.php?ip=" + neteaseIp);
+                String neteaseIp = Oversea.getIpByHostForUiDnsTest("m1.music.126.net", dns);
+                String page = Http.get("http://ip.taobao.com/service/getIpInfo.php?ip=" + neteaseIp, false);
                 String countryId = new JSONObject(page).getJSONObject("data").getString("country_id");
                 if ("CN".equals(countryId))
                     return getString(R.string.dns_pass);
