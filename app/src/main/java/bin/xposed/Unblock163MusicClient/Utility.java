@@ -68,7 +68,7 @@ public class Utility {
                 result.append("; ");
 
             result.append(URLEncoder.encode(cookie.getName(), "UTF-8"));
-            result.append(":");
+            result.append("=");
             result.append(URLEncoder.encode(cookie.getValue(), "UTF-8"));
         }
         return result.toString();
