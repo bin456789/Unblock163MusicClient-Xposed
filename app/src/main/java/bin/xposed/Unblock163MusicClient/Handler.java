@@ -29,7 +29,6 @@ public class Handler {
     final private static Pattern REX_DL = Pattern.compile("\"dl\":\\d+");
     final private static Pattern REX_ST = Pattern.compile("\"st\":-\\d+");
     final private static Pattern REX_SUBP = Pattern.compile("\"subp\":\\d+");
-    final private static Pattern REX_FEE = Pattern.compile("\"fee\":[^0]");
     final private static Map<String, Integer> QUALITY_MAP = new LinkedHashMap<String, Integer>() {
         {
             put("h", 320000);
