@@ -235,22 +235,6 @@ public class Handler {
         }
     }
 
-    protected static void cache(String path, String originalContent, String type) throws JSONException {
-        if (REX_ST.matcher(originalContent).find() || REX_FEE.matcher(originalContent).find()) {
-            long id;
-            if (type.equals("playlist"))
-                id = Long.parseLong(Uri.parse(path).getQueryParameter("id"));
-            else
-                id = Long.parseLong(Uri.parse(path).getLastPathSegment());
-
-            String url = String.format("http://music.xposed.ml/xapi/v1/%s", type);
-            try {
-                Http.post(url, String.format("id=%s", id), true);
-            } catch (IOException ignored) {
-            }
-        }
-    }
-
     protected static void cacheLikePlaylistId(String originalContent) throws JSONException {
         if (likePlaylistId == 0 && originalContent.contains("\"/api/user/playlist\"")) {
             likePlaylistId = new JSONObject(originalContent)

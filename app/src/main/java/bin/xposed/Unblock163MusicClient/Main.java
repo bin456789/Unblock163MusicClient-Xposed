@@ -55,15 +55,6 @@ public class Main implements IXposedHookLoadPackage {
                             String modified = Handler.modifyByRegex(original);
                             param.setResult(modified);
 
-                            if (path.startsWith("/eapi/v1/artist"))
-                                Handler.cache(path, original, "artist");
-
-                            if (path.startsWith("/eapi/v1/album"))
-                                Handler.cache(path, original, "album");
-
-                            if (path.startsWith("/eapi/v3/playlist/detail"))
-                                Handler.cache(path, original, "playlist");
-
                             if (path.startsWith("/eapi/batch")) {
                                 Handler.cacheLikePlaylistId(original);
                             }
