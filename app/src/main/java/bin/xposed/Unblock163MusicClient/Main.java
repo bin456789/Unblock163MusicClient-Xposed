@@ -43,6 +43,8 @@ public class Main implements IXposedHookLoadPackage {
                     if (url.startsWith("http://music.163.com/eapi/")) {
                         String path = url.replace("http://music.163.com", "");
                         if (path.startsWith("/eapi/batch")
+                                || path.startsWith("/eapi/album/privilege")
+                                || path.startsWith("/eapi/artist/privilege")
                                 || path.startsWith("/eapi/song/enhance/privilege")
                                 || path.startsWith("/eapi/v1/artist")
                                 || path.startsWith("/eapi/v1/album")
