@@ -176,7 +176,6 @@ public class Handler {
                             String url = generateUrl(newSong.getLong("fid"));
                             originalSong.put("br", newSong.getInt("br"))
                                     .put("code", 200)
-                                    .put("fee", 0)
                                     .put("gain", newSong.getDouble("vd"))
                                     .put("md5", String.format("%32s", fid).replace(" ", "0")) // 使用fid避免重复
                                     .put("size", newSong.getLong("size"))
@@ -185,7 +184,6 @@ public class Handler {
                         } else {
                             originalSong.put("br", newSong.getInt("br"))
                                     .put("code", 200)
-                                    .put("fee", 0)
                                     .put("gain", newSong.getDouble("gain"))
                                     .put("md5", newSong.getString("md5"))
                                     .put("size", newSong.getLong("size"))
@@ -217,8 +215,8 @@ public class Handler {
         try {
             String ids = URLEncoder.encode(String.format("[\"%s_0\"]", songId), "UTF-8");
             String url = String.format("song/enhance/player/url?br=%s&ids=%s", expectBitrate, ids);
-            String page = CloundMusicPackage.postEapi(url, null);
-            return new JSONObject(page);
+            String raw = CloundMusicPackage.postEapi(url, null);
+            return new JSONObject(raw).getJSONArray("data").getJSONObject(0);
         } catch (Exception e) {
             return null;
         }
