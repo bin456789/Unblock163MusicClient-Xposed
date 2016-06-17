@@ -1,8 +1,8 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 23
-    buildToolsVersion '23.0.3'
+    compileSdkVersion 24
+    buildToolsVersion '24.0.0'
     useLibrary 'org.apache.http.legacy'
 
     signingConfigs {
@@ -22,9 +22,9 @@ android {
     defaultConfig {
         applicationId "bin.xposed.Unblock163MusicClient"
         minSdkVersion 9
-        targetSdkVersion 23
-        versionCode 3
-        versionName "0.0.3"
+        targetSdkVersion 24
+        versionCode 4
+        versionName "0.0.4"
     }
 
     buildTypes {
