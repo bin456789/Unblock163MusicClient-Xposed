@@ -40,7 +40,8 @@ public class Http {
     }
 
     public static int head(String urlString, Boolean sendDefaultHead) throws IOException, JSONException {
-        return new Http("HEAD", urlString, null, sendDefaultHead).responseCode;
+//        return new Http("HEAD", urlString, null, sendDefaultHead).responseCode;
+        return 200;
     }
 
     private void doRequest(String method, String urlString, String postData, Boolean sendDefaultHead) throws IOException, JSONException {
