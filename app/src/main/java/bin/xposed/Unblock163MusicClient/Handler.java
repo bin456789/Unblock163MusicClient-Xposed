@@ -57,7 +57,14 @@ public class Handler {
 
     protected static String modifyPlayerOrDownloadApi(String path, String originalContent, String from) throws JSONException, IllegalAccessException, InstantiationException, InvocationTargetException, IOException {
         JSONObject originalJson = new JSONObject(originalContent);
-        int expectBitrate = Integer.parseInt(Uri.parse(path).getQueryParameter("br"));
+
+        int expectBitrate;
+        try {
+            expectBitrate = Integer.parseInt(Uri.parse(path).getQueryParameter("br"));
+        } catch (Exception ignored) {
+            expectBitrate = 320000;
+        }
+
         boolean isModified = false;
 
         Object data = originalJson.get("data");
