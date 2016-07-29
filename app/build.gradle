@@ -4,21 +4,21 @@ android {
     compileSdkVersion 24
     buildToolsVersion '24.0.1'
     useLibrary 'org.apache.http.legacy'
-
     signingConfigs {
-        config {
-            try {
-                keyAlias KEY_ALIAS
-                keyPassword KEY_PASSWORD
+        release {
+            if (System.getenv()["CI"]) {
+                storeFile file(System.getenv("STORE_FILE"))
+                storePassword System.getenv("STORE_PASSWORD")
+                keyAlias System.getenv("KEY_ALIAS")
+                keyPassword System.getenv("KEY_PASSWORD")
+            } else {
                 storeFile file(STORE_FILE)
                 storePassword STORE_PASSWORD
-            }
-            catch (ex) {
-                throw new InvalidUserDataException(ex.message + " You should define KEY_ALIAS, KEY_PASSWORD, STORE_FILE and STORE_PASSWORD in gradle.properties.")
+                keyAlias KEY_ALIAS
+                keyPassword KEY_PASSWORD
             }
         }
     }
-
     defaultConfig {
         applicationId "bin.xposed.Unblock163MusicClient"
         minSdkVersion 9
@@ -26,13 +26,13 @@ android {
         versionCode 6
         versionName "0.0.6"
     }
-
     buildTypes {
         release {
             minifyEnabled true
             shrinkResources true
+            zipAlignEnabled true
             proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
-            signingConfig signingConfigs.config
+            signingConfig signingConfigs.release
         }
     }
 }

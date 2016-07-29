@@ -1,9 +1,8 @@
 language: android
-
 before_install:
-  - chmod +x gradlew
-
+- openssl aes-256-cbc -K $encrypted_157408ef9262_key -iv $encrypted_157408ef9262_iv
+  -in Bin.jks.enc -out Bin.jks -d
 android:
   components:
-    - build-tools-24.0.0
-    - android-24
+  - build-tools-24.0.1
+  - android-24
