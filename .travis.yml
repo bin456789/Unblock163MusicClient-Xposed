@@ -1,5 +1,8 @@
 language: android
 
+jdk:
+  - oraclejdk8
+
 before_install:
   - openssl aes-256-cbc -K $encrypted_3327ea27a2f5_key -iv $encrypted_3327ea27a2f5_iv -in Bin.jks.enc -out Bin.jks -d
 
