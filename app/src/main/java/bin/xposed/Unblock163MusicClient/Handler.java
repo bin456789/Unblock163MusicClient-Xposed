@@ -41,7 +41,7 @@ public class Handler {
     protected static Map playlistManipulateDataMap;
     protected static long likePlaylistId = 0;
     protected static List<Long> processingList = new LinkedList<>();
-
+    protected static List<String> useMServerSongs = new LinkedList<>();
 
     protected static String modifyByRegex(String originalContent) {
         String modified = originalContent;
@@ -111,12 +111,12 @@ public class Handler {
 
     protected static boolean processSong(JSONObject originalSong, int expectBitrate, String from) {
         int originalCode = originalSong.optInt("code");
-        int originalBr = originalSong.optInt("br");
+        int fee = originalSong.optInt("fee");
         String originalUrl = originalSong.optString("url");
         if (originalUrl.equals("null")) originalUrl = null;
 
         if (originalCode != 200
-                || originalBr != expectBitrate
+                || fee != 0
                 || originalUrl == null) {
             long songId = originalSong.optLong("id");
 

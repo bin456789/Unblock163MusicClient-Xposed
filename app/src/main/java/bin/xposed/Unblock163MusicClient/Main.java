@@ -5,9 +5,6 @@ import android.content.Context;
 import android.content.Intent;
 import android.content.IntentFilter;
 
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.impl.client.AbstractHttpClient;
 import org.xbill.DNS.TextParseException;
 
 import java.net.URI;
@@ -24,6 +21,7 @@ import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
 
 public class Main implements IXposedHookLoadPackage {
 
+    @SuppressWarnings("deprecation")
     public void handleLoadPackage(final LoadPackageParam lpparam) throws Throwable {
 
         if (lpparam.packageName.equals(BuildConfig.APPLICATION_ID)) {
@@ -127,34 +125,50 @@ public class Main implements IXposedHookLoadPackage {
                                 context.registerReceiver(settingChangedReceiver, settingChangedFilter);
                             }
                         });
+            }
 
 
-                // noinspection deprecation
-                findAndHookMethod(AbstractHttpClient.class, "execute", HttpUriRequest.class, new XC_MethodHook() {
-                    @SuppressWarnings("deprecation")
-                    @Override
-                    protected void beforeHookedMethod(XC_MethodHook.MethodHookParam param) throws TextParseException, URISyntaxException {
-                        if (param.args[0] instanceof HttpGet) {
-                            HttpGet httpGet = (HttpGet) param.args[0];
-                            URI uri = httpGet.getURI();
-                            String path = uri.getPath();
+            findAndHookMethod(CloundMusicPackage.org2.apache.http.impl.client.AbstractHttpClient._class, "execute", CloundMusicPackage.org2.apache.http.client.methods.HttpUriRequest._class, new XC_MethodHook() {
+                @Override
+                protected void beforeHookedMethod(MethodHookParam param) throws TextParseException, URISyntaxException {
+                    if (CloundMusicPackage.org2.apache.http.client.methods.HttpGet._class.isInstance(param.args[0])) {
+                        CloundMusicPackage.org2.apache.http.client.methods.HttpGet httpGet = new CloundMusicPackage.org2.apache.http.client.methods.HttpGet(param.args[0]);
+                        String path = httpGet.getURI().getPath();
+                        if (path.endsWith(".mp3") && !path.contains("/ymusic/")) {
+                            if (Handler.useMServerSongs.contains(path)) {
+                                httpGet.setURI(new URI("http://m2.music.126.net" + path));
+                                Handler.useMServerSongs.remove(path);
+                            }
 
-                            // only process self-generate url
-                            // original music url contains ymusic string, while self-generate url not contain.
-                            if (path.endsWith(".mp3") && !path.contains("/ymusic/")) {
-                                String host = uri.getHost();
+                            if (Settings.isOverseaModeEnabled()) {
+                                String host = httpGet.getURI().getHost();
                                 String ip = Oversea.getIpByHost(host);
                                 if (ip != null) {
                                     URI newUrl = new URI(String.format("http://%s%s", ip, path));
                                     httpGet.setURI(newUrl);
                                     httpGet.setHeader("Host", host);
-                                    param.args[0] = httpGet;
                                 }
                             }
                         }
                     }
-                });
-            }
+                }
+
+                @Override
+                protected void afterHookedMethod(MethodHookParam param) throws TextParseException, URISyntaxException {
+                    if (CloundMusicPackage.org2.apache.http.client.methods.HttpGet._class.isInstance(param.args[0])) {
+                        CloundMusicPackage.org2.apache.http.client.methods.HttpGet httpGet = new CloundMusicPackage.org2.apache.http.client.methods.HttpGet(param.args[0]);
+                        URI uri = httpGet.getURI();
+                        String path = uri.getPath();
+                        if (path.endsWith(".mp3") && !path.contains("/ymusic/")
+                                && uri.getHost().startsWith("p")) {
+                            CloundMusicPackage.org2.apache.http.HttpResponse httpResponse = new CloundMusicPackage.org2.apache.http.HttpResponse(param.getResult());
+                            if (httpResponse.getStatusLine().getStatusCode() == 404) {
+                                Handler.useMServerSongs.add(path);
+                            }
+                        }
+                    }
+                }
+            });
         }
     }
 }
