@@ -5,6 +5,7 @@ jdk:
 
 before_install:
   - openssl aes-256-cbc -K $encrypted_3327ea27a2f5_key -iv $encrypted_3327ea27a2f5_iv -in Bin.jks.enc -out Bin.jks -d
+  - gem install fir-cli
 
 android:
   components:
@@ -13,3 +14,16 @@ android:
     - tools # to install Android SDK tools 25.1.x (x = 6 right now)
     - build-tools-24.0.1
     - android-24
+
+deploy:
+  provider: releases
+  api_key:
+    secure: $GITHUB_TOKEN
+  file: app/build/outputs/apk/app-release.apk
+  skip_cleanup: true
+  overwrite: true
+  on:
+    tags: true
+
+after_deploy:
+   - fir p app/build/outputs/apk/app-release.apk -T $FIR_TOKEN -c "`git cat-file tag $TRAVIS_TAG`"
