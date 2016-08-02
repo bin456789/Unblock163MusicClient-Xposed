@@ -60,11 +60,12 @@ public class CloundMusicPackage {
         HttpBase.Url.setAccessible(true);
 
         // org.apache.http
-        if (shortVersion.equals("3.6")) {
+        try {
+            // 3.6.0 beta
             org2.apache.http.impl.client.AbstractHttpClient._class = findClass("com.netease.mam.org.apache.http.impl.client.AbstractHttpClient", lpparam.classLoader);
             org2.apache.http.client.methods.HttpUriRequest._class = findClass("com.netease.mam.org.apache.http.client.methods.HttpUriRequest", lpparam.classLoader);
             org2.apache.http.client.methods.HttpGet._class = findClass("com.netease.mam.org.apache.http.client.methods.HttpGet", lpparam.classLoader);
-        } else {
+        } catch (Error e) {
             org2.apache.http.impl.client.AbstractHttpClient._class = org.apache.http.impl.client.AbstractHttpClient.class;
             org2.apache.http.client.methods.HttpUriRequest._class = org.apache.http.client.methods.HttpUriRequest.class;
             org2.apache.http.client.methods.HttpGet._class = org.apache.http.client.methods.HttpGet.class;
