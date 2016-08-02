@@ -88,6 +88,14 @@ public class CloundMusicPackage {
 
     protected static class NeteaseMusicUtils {
         public static Class Class;
+
+        public static int getPlayQuality() {
+            return (int) callStaticMethod(NeteaseMusicUtils.Class, "k");
+        }
+
+        public static int getDownloadQuality() {
+            return (int) callStaticMethod(NeteaseMusicUtils.Class, "m");
+        }
     }
 
     protected static class Http {

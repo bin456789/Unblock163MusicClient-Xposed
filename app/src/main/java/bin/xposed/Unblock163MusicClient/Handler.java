@@ -61,8 +61,8 @@ public class Handler {
         int expectBitrate;
         try {
             expectBitrate = Integer.parseInt(Uri.parse(path).getQueryParameter("br"));
-        } catch (Exception ignored) {
-            expectBitrate = 320000;
+        } catch (Exception e) {
+            expectBitrate = "player".equals(from) ? CloundMusicPackage.NeteaseMusicUtils.getPlayQuality() : CloundMusicPackage.NeteaseMusicUtils.getDownloadQuality();
         }
 
         boolean isModified = false;
