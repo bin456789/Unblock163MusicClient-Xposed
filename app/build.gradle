@@ -23,8 +23,9 @@ android {
         applicationId "bin.xposed.Unblock163MusicClient"
         minSdkVersion 9
         targetSdkVersion 24
-        versionCode 6
-        versionName "0.0.6"
+        versionCode 7
+        versionName "0.0.7"
+        setProperty("archivesBaseName", "Unblock163MusicClient-$versionName")
     }
     buildTypes {
         release {

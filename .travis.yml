@@ -10,20 +10,23 @@ before_install:
 android:
   components:
     # https://github.com/travis-ci/travis-ci/issues/6040#issuecomment-219367943
-    - tools # to get the new `repository-11.xml`
-    - tools # to install Android SDK tools 25.1.x (x = 6 right now)
+    - tools
+    - tools
     - build-tools-24.0.1
     - android-24
+
+before_deploy:
+  - export APK_PATH=$(ls app/build/outputs/apk/*-release.apk)
 
 deploy:
   provider: releases
   api_key:
     secure: $GITHUB_TOKEN
-  file: app/build/outputs/apk/app-release.apk
+  file: $APK_PATH
   skip_cleanup: true
   overwrite: true
   on:
     tags: true
 
 after_deploy:
-   - fir p app/build/outputs/apk/app-release.apk -T $FIR_TOKEN -c "`git cat-file tag $TRAVIS_TAG`"
+   - fir p $APK_PATH -T $FIR_TOKEN -c "`git cat-file tag $TRAVIS_TAG`"
