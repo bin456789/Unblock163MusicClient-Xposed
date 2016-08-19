@@ -3,6 +3,10 @@ package bin.xposed.Unblock163MusicClient;
 import org.apache.http.cookie.Cookie;
 import org.json.JSONException;
 import org.json.JSONObject;
+import org.xbill.DNS.Lookup;
+import org.xbill.DNS.Record;
+import org.xbill.DNS.SimpleResolver;
+import org.xbill.DNS.Type;
 
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
@@ -11,6 +15,7 @@ import java.util.List;
 import java.util.Map;
 
 public class Utility {
+    private static SimpleResolver CN_DNS_RESOLVER;
 
     public static String getFirstPartOfString(String str, String separator) {
         return str.substring(0, str.indexOf(separator));
@@ -18,6 +23,10 @@ public class Utility {
 
     public static String getLastPartOfString(String str, String separator) {
         return str.substring(str.lastIndexOf(separator) + 1);
+    }
+
+    public static String getFileName(String url) {
+        return getFirstPartOfString(getLastPartOfString(url, "/"), ".");
     }
 
     public static String serialData(JSONObject json) throws UnsupportedEncodingException, JSONException {
@@ -72,5 +81,25 @@ public class Utility {
             result.append(URLEncoder.encode(cookie.getValue(), "UTF-8"));
         }
         return result.toString();
+    }
+
+    public static String getIpByHost(String domain) {
+        try {
+            if (CN_DNS_RESOLVER == null)
+                CN_DNS_RESOLVER = new SimpleResolver(Settings.getDnsServer());
+
+            // caches mechanism built-in, just look it up
+            Lookup lookup = new Lookup(domain, Type.A);
+            lookup.setResolver(CN_DNS_RESOLVER);
+            Record[] records = lookup.run();
+            if (lookup.getResult() == Lookup.SUCCESSFUL) {
+                // already random, just pick index 0
+                return records[0].rdataToString();
+            }
+            return null;
+        } catch (Exception e) {
+            e.printStackTrace();
+            return null;
+        }
     }
 }

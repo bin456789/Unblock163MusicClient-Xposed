@@ -1,12 +1,8 @@
 package bin.xposed.Unblock163MusicClient;
 
-import android.content.BroadcastReceiver;
-import android.content.Context;
-import android.content.Intent;
-import android.content.IntentFilter;
-
-import org.xbill.DNS.TextParseException;
-
+import java.lang.reflect.InvocationHandler;
+import java.lang.reflect.Method;
+import java.lang.reflect.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
@@ -17,7 +13,9 @@ import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
 
 import static de.robv.android.xposed.XposedBridge.hookMethod;
+import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
+import static de.robv.android.xposed.XposedHelpers.findConstructorExact;
 
 public class Main implements IXposedHookLoadPackage {
 
@@ -34,10 +32,11 @@ public class Main implements IXposedHookLoadPackage {
         if (lpparam.packageName.equals("com.netease.cloudmusic")) {
             CloundMusicPackage.init(lpparam);
 
-            findAndHookMethod(CloundMusicPackage.Http.Class, "a", String.class, new XC_MethodHook() {
+
+            findAndHookMethod(CloundMusicPackage.HttpEapi.CLASS, "a", String.class, new XC_MethodHook() {
                 @Override
-                protected void afterHookedMethod(MethodHookParam param) throws Exception {
-                    String url = (String) CloundMusicPackage.HttpBase.Url.get(param.thisObject);
+                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    String url = new CloundMusicPackage.HttpBase(param.thisObject).getUrl();
                     if (url.startsWith("http://music.163.com/eapi/")) {
                         String path = url.replace("http://music.163.com", "");
                         if (path.startsWith("/eapi/batch")
@@ -84,7 +83,7 @@ public class Main implements IXposedHookLoadPackage {
 
 
             // save the post data about adding song to playlist
-            hookMethod(CloundMusicPackage.Http.Constructor, new XC_MethodHook() {
+            hookMethod(findConstructorExact(CloundMusicPackage.HttpEapi.CLASS, String.class, Map.class), new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                     if (param.args[0].equals("v1/playlist/manipulate/tracks")) {
@@ -95,7 +94,7 @@ public class Main implements IXposedHookLoadPackage {
 
 
             // calc md5
-            findAndHookMethod(CloundMusicPackage.NeteaseMusicUtils.Class, "a", String.class, new XC_MethodHook() {
+            findAndHookMethod(CloundMusicPackage.NeteaseMusicUtils.CLASS, "a", String.class, new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                     String path = ((String) param.args[0]);
@@ -109,66 +108,64 @@ public class Main implements IXposedHookLoadPackage {
 
             // oversea mode
             if (Settings.isOverseaModeEnabled()) {
-                Oversea.init();
-                findAndHookMethod("com.netease.cloudmusic.NeteaseMusicApplication", lpparam.classLoader,
-                        "onCreate", new XC_MethodHook() {
+                findAndHookMethod(CloundMusicPackage.org2.apache.http.impl.client.AbstractHttpClient.CLASS,
+                        "execute", CloundMusicPackage.org2.apache.http.client.methods.HttpUriRequest.CLASS, new XC_MethodHook() {
                             @Override
-                            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                                Context context = (Context) param.thisObject;
-                                BroadcastReceiver settingChangedReceiver = new BroadcastReceiver() {
-                                    @Override
-                                    public void onReceive(Context context, Intent intent) {
-                                        Oversea.setDnsServer(intent.getStringExtra(Settings.DNS_SERVER_KEY));
+                            protected void beforeHookedMethod(MethodHookParam param) throws URISyntaxException {
+                                if (CloundMusicPackage.org2.apache.http.client.methods.HttpRequestBase.CLASS.isInstance(param.args[0])) {
+                                    Object object = param.args[0];
+                                    URI uri = (URI) callMethod(object, "getURI");
+                                    String host = uri.getHost();
+                                    String path = uri.getPath();
+                                    // solve server ip point to 1.1.1.1
+                                    if (host.equals("m2.music.126.net")) {
+                                        String ip = Utility.getIpByHost(host);
+                                        if (ip != null) {
+                                            URI newUrl = new URI(String.format("http://%s%s", ip, path));
+                                            callMethod(object, "setURI", newUrl);
+                                            callMethod(object, "setHeader", "Host", host);
+                                        }
                                     }
-                                };
-                                IntentFilter settingChangedFilter = new IntentFilter(Settings.SETTING_CHANGED);
-                                context.registerReceiver(settingChangedReceiver, settingChangedFilter);
-                            }
-                        });
-            }
-
-
-            findAndHookMethod(CloundMusicPackage.org2.apache.http.impl.client.AbstractHttpClient._class, "execute", CloundMusicPackage.org2.apache.http.client.methods.HttpUriRequest._class, new XC_MethodHook() {
-                @Override
-                protected void beforeHookedMethod(MethodHookParam param) throws TextParseException, URISyntaxException {
-                    if (CloundMusicPackage.org2.apache.http.client.methods.HttpGet._class.isInstance(param.args[0])) {
-                        CloundMusicPackage.org2.apache.http.client.methods.HttpGet httpGet = new CloundMusicPackage.org2.apache.http.client.methods.HttpGet(param.args[0]);
-                        String path = httpGet.getURI().getPath();
-                        if (path.endsWith(".mp3") && !path.contains("/ymusic/")) {
-                            if (Handler.useMServerSongs.contains(path)) {
-                                httpGet.setURI(new URI("http://m2.music.126.net" + path));
-                                Handler.useMServerSongs.remove(path);
-                            }
-
-                            if (Settings.isOverseaModeEnabled()) {
-                                String host = httpGet.getURI().getHost();
-                                String ip = Oversea.getIpByHost(host);
-                                if (ip != null) {
-                                    URI newUrl = new URI(String.format("http://%s%s", ip, path));
-                                    httpGet.setURI(newUrl);
-                                    httpGet.setHeader("Host", host);
                                 }
                             }
                         }
-                    }
-                }
+                );
+            }
 
+
+            // xiami
+            findAndHookMethod(CloundMusicPackage.HttpEapi.CLASS.getPackage().getName() + ".a", lpparam.classLoader, "b", new XC_MethodHook() {
                 @Override
-                protected void afterHookedMethod(MethodHookParam param) throws TextParseException, URISyntaxException {
-                    if (CloundMusicPackage.org2.apache.http.client.methods.HttpGet._class.isInstance(param.args[0])) {
-                        CloundMusicPackage.org2.apache.http.client.methods.HttpGet httpGet = new CloundMusicPackage.org2.apache.http.client.methods.HttpGet(param.args[0]);
-                        URI uri = httpGet.getURI();
-                        String path = uri.getPath();
-                        if (path.endsWith(".mp3") && !path.contains("/ymusic/")
-                                && uri.getHost().startsWith("p")) {
-                            CloundMusicPackage.org2.apache.http.HttpResponse httpResponse = new CloundMusicPackage.org2.apache.http.HttpResponse(param.getResult());
-                            if (httpResponse.getStatusLine().getStatusCode() == 404) {
-                                Handler.useMServerSongs.add(path);
-                            }
-                        }
-                    }
+                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                    callMethod(param.getResult(), "addRequestInterceptor", Proxy.newProxyInstance(lpparam.classLoader, new Class[]{CloundMusicPackage.org2.apache.http.HttpRequestInterceptor.CLASS}, new InvocationHandler() {
+                                @Override
+                                public Object invoke(Object o, Method method, Object[] args) throws Throwable {
+                                    if (method.getName().equals("process")) {
+                                        Object httpRequest = args[0];
+
+                                        Object originalHttpRequest = callMethod(httpRequest, "getOriginal");
+                                        URI originalURI = (URI) callMethod(originalHttpRequest, "getURI");
+                                        if (originalURI.getHost().endsWith("xiami.com")) {
+
+                                            // 避免发送网易cookie到虾米
+                                            callMethod(httpRequest, "removeHeader", callMethod(httpRequest, "getFirstHeader", "Cookie"));
+                                            callMethod(httpRequest, "removeHeaders", "Referer");
+
+                                            // 避免开通联通流量包后听不了
+                                            if ((boolean) callMethod(httpRequest, "containsHeader", "Authorization")) {
+                                                return callMethod(httpRequest, "setHeader", "Authorization", "Basic MzAwMDAwNDU5MDpGRDYzQTdBNTM0NUMxMzFF");
+                                            }
+                                        }
+                                        return null;
+                                    }
+                                    return method.invoke(o, args);
+                                }
+                            })
+                    );
                 }
             });
         }
     }
 }
+
+

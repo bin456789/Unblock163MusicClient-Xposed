@@ -15,7 +15,6 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
-import java.util.LinkedList;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
@@ -40,8 +39,7 @@ public class Handler {
 
     protected static Map playlistManipulateDataMap;
     protected static long likePlaylistId = 0;
-    protected static List<Long> processingList = new LinkedList<>();
-    protected static List<String> useMServerSongs = new LinkedList<>();
+
 
     protected static String modifyByRegex(String originalContent) {
         String modified = originalContent;
@@ -91,7 +89,7 @@ public class Handler {
         if (code != 200) {
             @SuppressWarnings("unchecked")
             String postData = Utility.serialData(playlistManipulateDataMap);
-            return Http.post("http://music.xposed.ml/xapi/v1/manipulate", postData, true);
+            return Http.post("http://music.xposed.tk/xapi/v1/manipulate", postData, true);
         }
         return originalContent;
     }
@@ -103,136 +101,88 @@ public class Handler {
 
             if (code != 200) {
                 String postData = new URI(path).getQuery() + "&playlistId=" + likePlaylistId;
-                return Http.post("http://music.xposed.ml/xapi/v1/like", postData, true);
+                return Http.post("http://music.xposed.tk/xapi/v1/like", postData, true);
             }
         }
         return originalContent;
     }
 
     protected static boolean processSong(JSONObject originalSong, int expectBitrate, String from) {
-        int originalCode = originalSong.optInt("code");
-        int fee = originalSong.optInt("fee");
-        String originalUrl = originalSong.optString("url");
-        if (originalUrl.equals("null")) originalUrl = null;
+        Song oldSong = new Song(originalSong);
+        if ((oldSong.fee != 0 && oldSong.payed == 0 && oldSong.br < expectBitrate)
+                || oldSong.url == null
+                && oldSong.uf == null) {
 
-        if (originalCode != 200
-                || fee != 0
-                || originalUrl == null) {
-            long songId = originalSong.optLong("id");
+            // p
+            JSONObject pJson = Handler.getSongByRemoteApi(oldSong.id, expectBitrate);
+            Song song = new Song(pJson);
+            boolean isAccessable = song.checkAccessable();
 
-            // 避免 stackoverflow
-            if (!processingList.contains(songId)) {
-                processingList.add(songId);
+            // m
+            if (!isAccessable && song.url != null) {
+                song.url = Handler.convertPtoM(song.url);
+                isAccessable = song.checkAccessable();
+            }
 
-                JSONObject newSong = null;
-                String newSongFrom = null;
+            // p 320k
+            if (!isAccessable && pJson != null && pJson.has("h")) {
+                song = new Song(pJson.optJSONObject("h"));
+                isAccessable = song.checkAccessable();
+            }
 
-                // remote api
-                {
-                    JSONObject tmp = Handler.getSongByRemoteApi(songId, expectBitrate);
-                    // 加try，假如remote挂了也可以继续往下走
-                    try {
-                        if (tmp != null
-                                && tmp.getInt("code") == 200
-                                && Http.head(tmp.getString("url"), false) == 200) {
-                            newSong = tmp;
-                            newSongFrom = "remote";
-                        }
-                    } catch (Exception ignored) {
-                    }
-                }
+            // m 320k
+            if (!isAccessable && song.url != null) {
+                song.url = Handler.convertPtoM(song.url);
+                isAccessable = song.checkAccessable();
+            }
 
 
-                // 只用作remote的补充（即remote获取不到才用）
-                if (newSong == null) {
-                    JSONObject tmp = getSongByDetailApi(songId, expectBitrate);
-                    try {
-                        if (tmp != null
-                                && tmp.getLong("fid") != 0
-                                && Http.head(generateUrl(tmp.getLong("fid")), false) == 200) {
-                            newSong = tmp;
-                            newSongFrom = "detail";
-                        }
-                    } catch (Exception ignored) {
-                    }
-                }
-
-                // player download 互换，不用测试head
-                // 这两个 api 不能获得付费歌曲，下架只能获得128k。所以如果原来有url的（即音质不同或者是电台）就不需要
-                // 可能引起stackoverflow, 用processingList解决
-                if (newSong == null && originalUrl == null) {
-                    if (from.equals("player")) {
-                        JSONObject tmp = Handler.getSongByDownloadApi(songId, expectBitrate);
-                        if (tmp != null) {
-                            newSong = tmp;
-                            newSongFrom = "download";
-                        }
-                    } else {
-                        JSONObject tmp = Handler.getSongByPlayerApi(songId, expectBitrate);
-                        if (tmp != null) {
-                            newSong = tmp;
-                            newSongFrom = "player";
-                        }
-                    }
-                }
-
-                if (newSong != null) {
-                    try {
-                        if ("detail".equals(newSongFrom)) {
-                            long fid = newSong.getLong("fid");
-                            String url = generateUrl(newSong.getLong("fid"));
-                            originalSong.put("br", newSong.getInt("br"))
-                                    .put("code", 200)
-                                    .put("gain", newSong.getDouble("vd"))
-                                    .put("md5", String.format("%32s", fid).replace(" ", "0")) // 使用fid避免重复
-                                    .put("size", newSong.getLong("size"))
-                                    .put("type", Utility.getLastPartOfString(url, "."))
-                                    .put("url", url);
-                        } else {
-                            originalSong.put("br", newSong.getInt("br"))
-                                    .put("code", 200)
-                                    .put("gain", newSong.getDouble("gain"))
-                                    .put("md5", newSong.getString("md5"))
-                                    .put("size", newSong.getLong("size"))
-                                    .put("type", newSong.getString("type"))
-                                    .put("url", newSong.getString("url"));
-                        }
-                        processingList.remove(songId);
-                        return true;
-                    } catch (JSONException e) {
-                        processingList.remove(songId);
-                        return false;
-                    }
+            if (!isAccessable) {
+                if (oldSong.code == 404 || ("download".equals(from) && oldSong.code == -110)) {
+                    song = new Song(Handler.getSongByXiami(oldSong.id, expectBitrate));
+                    song.checkAccessable(); // fix music length
+                } else {
+                    song = new Song(Handler.getSongByRemoteApiEnhance(oldSong.id, expectBitrate));
                 }
             }
+
+            try {
+                originalSong.put("br", song.br)
+                        .put("code", 200)
+                        .put("gain", song.gain)
+                        .put("md5", song.md5)
+                        .put("size", song.size)
+                        .put("type", song.type)
+                        .put("url", song.url);
+            } catch (JSONException e) {
+                return false;
+            }
+            return true;
         }
         return false;
     }
 
     protected static JSONObject getSongByRemoteApi(long songId, int expectBitrate) {
         try {
-            String raw = Http.post("http://music.xposed.ml/xapi/v1/song", String.format("id=%s&br=%s", songId, expectBitrate), true);
+            String raw = Http.post("http://music.xposed.tk/xapi/v1/song", String.format("id=%s&br=%s&withHQ=1", songId, expectBitrate), true);
             return new JSONObject(raw).getJSONObject("data");
         } catch (Exception e) {
             return null;
         }
     }
 
-    protected static JSONObject getSongByPlayerApi(long songId, int expectBitrate) {
+    protected static JSONObject getSongByRemoteApiEnhance(long songId, int expectBitrate) {
         try {
-            String ids = URLEncoder.encode(String.format("[\"%s_0\"]", songId), "UTF-8");
-            String url = String.format("song/enhance/player/url?br=%s&ids=%s", expectBitrate, ids);
-            String raw = CloundMusicPackage.postEapi(url, null);
-            return new JSONObject(raw).getJSONArray("data").getJSONObject(0);
+            String raw = Http.post("http://music.xposed.tk/xapi/v1/songx", String.format("id=%s&br=%s", songId, expectBitrate), true);
+            return new JSONObject(raw).getJSONObject("data");
         } catch (Exception e) {
             return null;
         }
     }
 
-    protected static JSONObject getSongByDownloadApi(long songId, int expectBitrate) {
-        String url = String.format("song/enhance/download/url?br=%s&id=%s_0", expectBitrate, songId);
+    protected static JSONObject getSongByXiami(long songId, int expectBitrate) {
         try {
-            String raw = CloundMusicPackage.postEapi(url, null);
+            String raw = Http.post("http://music.xposed.tk/xapi/v1/xiami/match", String.format("id=%s&br=%s", songId, expectBitrate), true);
             return new JSONObject(raw).getJSONObject("data");
         } catch (Exception e) {
             return null;
@@ -248,8 +198,35 @@ public class Handler {
         }
     }
 
+    protected static String convertPtoM(String pUrl) {
+        return "http://m2" + pUrl.substring(pUrl.indexOf('.'));
+    }
+
+
+    protected static JSONObject getSongByPlayerApi(long songId, int expectBitrate) {
+        try {
+            String ids = URLEncoder.encode(String.format("[\"%s_0\"]", songId), "UTF-8");
+            String url = String.format("song/enhance/player/url?br=%s&ids=%s", expectBitrate, ids);
+            String raw = CloundMusicPackage.HttpEapi.post(url, null);
+            return new JSONObject(raw).getJSONArray("data").getJSONObject(0);
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+    protected static JSONObject getSongByDownloadApi(long songId, int expectBitrate) {
+        String url = String.format("song/enhance/download/url?br=%s&id=%s_0", expectBitrate, songId);
+        try {
+            String raw = CloundMusicPackage.HttpEapi.post(url, null);
+            return new JSONObject(raw).getJSONObject("data");
+        } catch (Exception e) {
+            return null;
+        }
+    }
+
+
     protected static String generateUrl(long fid) {
-        return (String) XposedHelpers.callStaticMethod(CloundMusicPackage.NeteaseMusicUtils.Class, "a", fid);
+        return (String) XposedHelpers.callStaticMethod(CloundMusicPackage.NeteaseMusicUtils.CLASS, "a", fid);
     }
 
     protected static JSONObject getSongByDetailApi(long songId, int expectBitrate) {
@@ -272,7 +249,7 @@ public class Handler {
 
         Map<String, String> map = new HashMap<>();
         map.put("c", c.toString());
-        String page = CloundMusicPackage.postEapi("v3/song/detail", map);
+        String page = CloundMusicPackage.HttpEapi.post("v3/song/detail", map);
         JSONArray jsonArraySong = new JSONObject(page).getJSONArray("songs");
 
 
