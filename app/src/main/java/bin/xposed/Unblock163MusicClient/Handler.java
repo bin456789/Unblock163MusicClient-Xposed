@@ -60,7 +60,7 @@ public class Handler {
         try {
             expectBitrate = Integer.parseInt(Uri.parse(path).getQueryParameter("br"));
         } catch (Exception e) {
-            expectBitrate = "player".equals(from) ? CloundMusicPackage.NeteaseMusicUtils.getPlayQuality() : CloundMusicPackage.NeteaseMusicUtils.getDownloadQuality();
+            expectBitrate = "player".equals(from) ? CloudMusicPackage.NeteaseMusicUtils.getPlayQuality() : CloudMusicPackage.NeteaseMusicUtils.getDownloadQuality();
         }
 
         boolean isModified = false;
@@ -100,7 +100,7 @@ public class Handler {
         int code = originalJson.getInt("code");
         if (code != 200) {
             if (LIKE_PLAYLIST_ID == 0)
-                CloundMusicPackage.CAC.getMyPlaylist();
+                CloudMusicPackage.CAC.getMyPlaylist();
 
             String query = new URI(LAST_LIKE_STRING).getQuery();
             String postData = query + "&playlistId=" + LIKE_PLAYLIST_ID;
@@ -210,7 +210,7 @@ public class Handler {
         try {
             String ids = URLEncoder.encode(String.format("[\"%s_0\"]", songId), "UTF-8");
             String url = String.format("song/enhance/player/url?br=%s&ids=%s", expectBitrate, ids);
-            String raw = CloundMusicPackage.HttpEapi.post(url, null);
+            String raw = CloudMusicPackage.HttpEapi.post(url, null);
             return new JSONObject(raw).getJSONArray("data").getJSONObject(0);
         } catch (Exception e) {
             return null;
@@ -220,7 +220,7 @@ public class Handler {
     protected static JSONObject getSongByDownloadApi(long songId, int expectBitrate) {
         String url = String.format("song/enhance/download/url?br=%s&id=%s_0", expectBitrate, songId);
         try {
-            String raw = CloundMusicPackage.HttpEapi.post(url, null);
+            String raw = CloudMusicPackage.HttpEapi.post(url, null);
             return new JSONObject(raw).getJSONObject("data");
         } catch (Exception e) {
             return null;
@@ -229,7 +229,7 @@ public class Handler {
 
 
     protected static String generateUrl(long fid) {
-        return (String) XposedHelpers.callStaticMethod(CloundMusicPackage.NeteaseMusicUtils.CLASS, "a", fid);
+        return (String) XposedHelpers.callStaticMethod(CloudMusicPackage.NeteaseMusicUtils.CLASS, "a", fid);
     }
 
     protected static JSONObject getSongByDetailApi(long songId, int expectBitrate) {
@@ -252,7 +252,7 @@ public class Handler {
 
         Map<String, String> map = new HashMap<>();
         map.put("c", c.toString());
-        String page = CloundMusicPackage.HttpEapi.post("v3/song/detail", map);
+        String page = CloudMusicPackage.HttpEapi.post("v3/song/detail", map);
         JSONArray jsonArraySong = new JSONObject(page).getJSONArray("songs");
 
 

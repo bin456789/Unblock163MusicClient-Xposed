@@ -21,7 +21,7 @@ import static de.robv.android.xposed.XposedHelpers.findClass;
 import static de.robv.android.xposed.XposedHelpers.newInstance;
 
 @SuppressWarnings({"deprecation", "unchecked"})
-public class CloundMusicPackage {
+public class CloudMusicPackage {
 
     private static String SHORT_VERSION;
     private static ClassLoader CLASS_LOADER;

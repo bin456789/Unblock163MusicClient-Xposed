@@ -20,7 +20,7 @@ import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
 
-import static bin.xposed.Unblock163MusicClient.CloundMusicPackage.findMamClass;
+import static bin.xposed.Unblock163MusicClient.CloudMusicPackage.findMamClass;
 import static de.robv.android.xposed.XposedBridge.hookMethod;
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
@@ -43,12 +43,12 @@ public class Main implements IXposedHookLoadPackage {
             findAndHookMethod(Application.class, "attach", Context.class, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    CloundMusicPackage.init(lpparam);
+                    CloudMusicPackage.init(lpparam);
 
-                    findAndHookMethod(CloundMusicPackage.HttpEapi.CLASS, "a", String.class, new XC_MethodHook() {
+                    findAndHookMethod(CloudMusicPackage.HttpEapi.CLASS, "a", String.class, new XC_MethodHook() {
                         @Override
                         protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                            String url = CloundMusicPackage.HttpEapi.getUrl(param.thisObject);
+                            String url = CloudMusicPackage.HttpEapi.getUrl(param.thisObject);
                             if (url.startsWith("http://music.163.com/eapi/")) {
                                 String path = url.replace("http://music.163.com", "");
                                 if (path.startsWith("/eapi/batch")
@@ -94,7 +94,7 @@ public class Main implements IXposedHookLoadPackage {
 
 
                     // save latest post data
-                    hookMethod(findConstructorExact(CloundMusicPackage.HttpEapi.CLASS, String.class, Map.class, String.class, boolean.class), new XC_MethodHook() {
+                    hookMethod(findConstructorExact(CloudMusicPackage.HttpEapi.CLASS, String.class, Map.class, String.class, boolean.class), new XC_MethodHook() {
                         @Override
                         protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                             String api = (String) param.args[0];
@@ -108,7 +108,7 @@ public class Main implements IXposedHookLoadPackage {
 
 
                     // calc md5
-                    findAndHookMethod(CloundMusicPackage.NeteaseMusicUtils.CLASS, "a", String.class, new XC_MethodHook() {
+                    findAndHookMethod(CloudMusicPackage.NeteaseMusicUtils.CLASS, "a", String.class, new XC_MethodHook() {
                         @Override
                         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                             String path = ((String) param.args[0]);
@@ -148,7 +148,7 @@ public class Main implements IXposedHookLoadPackage {
 
 
                     // xiami
-                    findAndHookMethod(CloundMusicPackage.HttpEapi.CLASS.getPackage().getName() + ".a", lpparam.classLoader, "b", new XC_MethodHook() {
+                    findAndHookMethod(CloudMusicPackage.HttpEapi.CLASS.getPackage().getName() + ".a", lpparam.classLoader, "b", new XC_MethodHook() {
                         Class HttpRequestInterceptor = findMamClass(HttpRequestInterceptor.class);
                         Method addRequestInterceptor = findMethodExact(findMamClass(AbstractHttpClient.class), "addRequestInterceptor", HttpRequestInterceptor);
 

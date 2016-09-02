@@ -68,7 +68,7 @@ public class Http {
         CookieHandler.setDefault(new CookieManager()); // avoid two cookie header, __cfduid
         if (sendDefaultHead) {
             conn.setRequestProperty("User-Agent", "android");
-            conn.setRequestProperty("Cookie", CloundMusicPackage.HttpEapi.getDefaultCookie());
+            conn.setRequestProperty("Cookie", CloudMusicPackage.HttpEapi.getDefaultCookie());
         }
 
         if (additionHeaders != null)
