@@ -12,6 +12,7 @@ import java.lang.reflect.Field;
 import java.util.List;
 import java.util.Map;
 
+import de.robv.android.xposed.XposedHelpers;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 import static de.robv.android.xposed.XposedHelpers.callMethod;
@@ -23,13 +24,14 @@ import static de.robv.android.xposed.XposedHelpers.newInstance;
 public class CloundMusicPackage {
 
     private static String SHORT_VERSION;
+    private static ClassLoader CLASS_LOADER;
 
     public static void init(XC_LoadPackage.LoadPackageParam lpparam) throws PackageManager.NameNotFoundException {
-        // get context
-        Object activityThread = callStaticMethod(findClass("android.app.ActivityThread", null), "currentActivityThread");
-        Context systemContext = (Context) callMethod(activityThread, "getSystemContext");
+        CLASS_LOADER = lpparam.classLoader;
 
         // get version
+        Object activityThread = callStaticMethod(findClass("android.app.ActivityThread", null), "currentActivityThread");
+        Context systemContext = (Context) callMethod(activityThread, "getSystemContext");
         String versionName = systemContext.getPackageManager().getPackageInfo(lpparam.packageName, 0).versionName;
         String[] versionNameSplits = versionName.split("\\.");
         SHORT_VERSION = versionNameSplits[0] + "." + versionNameSplits[1];
@@ -51,22 +53,25 @@ public class CloundMusicPackage {
             default:
                 HttpEapi.CLASS = findClass("com.netease.cloudmusic.i.f", lpparam.classLoader);
         }
+    }
 
-        HttpBase.CLASS = HttpEapi.CLASS.getSuperclass();
-
-
-        // org.apache.http
+    public static Class findMamClass(Class clazz) {
         try {
-            // 3.6.0 google play
-            org2.apache.http.impl.client.AbstractHttpClient.CLASS = findClass("com.netease.mam.org.apache.http.impl.client.AbstractHttpClient", lpparam.classLoader);
-            org2.apache.http.client.methods.HttpUriRequest.CLASS = findClass("com.netease.mam.org.apache.http.client.methods.HttpUriRequest", lpparam.classLoader);
-            org2.apache.http.client.methods.HttpRequestBase.CLASS = findClass("com.netease.mam.org.apache.http.client.methods.HttpRequestBase", lpparam.classLoader);
-            org2.apache.http.HttpRequestInterceptor.CLASS = findClass("com.netease.mam.org.apache.http.HttpRequestInterceptor", lpparam.classLoader);
-        } catch (Error e) {
-            org2.apache.http.impl.client.AbstractHttpClient.CLASS = org.apache.http.impl.client.AbstractHttpClient.class;
-            org2.apache.http.client.methods.HttpUriRequest.CLASS = org.apache.http.client.methods.HttpUriRequest.class;
-            org2.apache.http.client.methods.HttpRequestBase.CLASS = org.apache.http.client.methods.HttpRequestBase.class;
-            org2.apache.http.HttpRequestInterceptor.CLASS = org.apache.http.HttpRequestInterceptor.class;
+            return XposedHelpers.findClass("com.netease.mam." + clazz.getName(), CLASS_LOADER); // 3.6.0 google play, 3.7.0
+        } catch (Throwable t) {
+            return clazz;
+        }
+    }
+
+    public static class CAC {
+        public static void getMyPlaylist() {
+            Object object;
+            if (SHORT_VERSION.equals("3.0"))
+                object = XposedHelpers.getStaticObjectField(findClass("com.netease.cloudmusic.b.a.c", CLASS_LOADER), "b");
+            else
+                object = XposedHelpers.getStaticObjectField(findClass("com.netease.cloudmusic.c.a.c", CLASS_LOADER), "a");
+
+            callMethod(object, "a", 1000, 0); // 参数分别为 limit, offset, 然而服务器会忽略
         }
     }
 
@@ -96,15 +101,7 @@ public class CloundMusicPackage {
                 h.post(new Runnable() {
                     @Override
                     public void run() {
-                        final Toast toast = Toast.makeText(application, text, Toast.LENGTH_SHORT);
-                        toast.show();
-
-                        android.os.Handler handler = new android.os.Handler();
-                        handler.postDelayed(new Runnable() {
-                            public void run() {
-                                toast.cancel();
-                            }
-                        }, 1000);
+                        Toast.makeText(application, text, Toast.LENGTH_SHORT).show();
                     }
                 });
             }
@@ -113,6 +110,7 @@ public class CloundMusicPackage {
 
     public static class HttpEapi {
         public static Class CLASS;
+        public static Field URL_FIELD;
 
         public static String post(String path, Map dataMap) {
             if (SHORT_VERSION.equals("3.0"))
@@ -128,57 +126,13 @@ public class CloundMusicPackage {
             } else
                 return (String) callStaticMethod(CLASS, "b", "music.163.com");
         }
-    }
 
-    public static class HttpBase {
-        public static Class CLASS;
-        public static Field URL_FIELD;
-        private Object _object;
-
-
-        public HttpBase(Object object) {
-            _object = object;
-        }
-
-        public String getUrl() throws NoSuchFieldException, IllegalAccessException {
+        public static String getUrl(Object httpEapiObject) throws NoSuchFieldException, IllegalAccessException {
             if (URL_FIELD == null) {
-                URL_FIELD = CLASS.getDeclaredField("c");
+                URL_FIELD = HttpEapi.CLASS.getSuperclass().getDeclaredField("c");
                 URL_FIELD.setAccessible(true);
             }
-            return (String) URL_FIELD.get(_object);
-        }
-    }
-
-    public static class org2 {
-        public static class apache {
-            public static class http {
-
-                public static class impl {
-                    public static class client {
-                        public static class AbstractHttpClient {
-                            public static Class CLASS;
-                        }
-
-                    }
-                }
-
-                public static class client {
-                    public static class methods {
-                        public static class HttpUriRequest {
-                            public static Class CLASS;
-                        }
-
-
-                        public static class HttpRequestBase {
-                            public static Class CLASS;
-                        }
-                    }
-                }
-
-                public static class HttpRequestInterceptor {
-                    public static Class CLASS;
-                }
-            }
+            return (String) URL_FIELD.get(httpEapiObject);
         }
     }
 }

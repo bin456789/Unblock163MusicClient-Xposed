@@ -1,5 +1,13 @@
 package bin.xposed.Unblock163MusicClient;
 
+import android.app.Application;
+import android.content.Context;
+
+import org.apache.http.HttpRequestInterceptor;
+import org.apache.http.client.methods.HttpRequestBase;
+import org.apache.http.client.methods.HttpUriRequest;
+import org.apache.http.impl.client.AbstractHttpClient;
+
 import java.lang.reflect.InvocationHandler;
 import java.lang.reflect.Method;
 import java.lang.reflect.Proxy;
@@ -12,10 +20,12 @@ import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
 
+import static bin.xposed.Unblock163MusicClient.CloundMusicPackage.findMamClass;
 import static de.robv.android.xposed.XposedBridge.hookMethod;
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
 import static de.robv.android.xposed.XposedHelpers.findConstructorExact;
+import static de.robv.android.xposed.XposedHelpers.findMethodExact;
 
 public class Main implements IXposedHookLoadPackage {
 
@@ -30,89 +40,94 @@ public class Main implements IXposedHookLoadPackage {
 
 
         if (lpparam.packageName.equals("com.netease.cloudmusic")) {
-            CloundMusicPackage.init(lpparam);
-
-
-            findAndHookMethod(CloundMusicPackage.HttpEapi.CLASS, "a", String.class, new XC_MethodHook() {
+            findAndHookMethod(Application.class, "attach", Context.class, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    String url = new CloundMusicPackage.HttpBase(param.thisObject).getUrl();
-                    if (url.startsWith("http://music.163.com/eapi/")) {
-                        String path = url.replace("http://music.163.com", "");
-                        if (path.startsWith("/eapi/batch")
-                                || path.startsWith("/eapi/album/privilege")
-                                || path.startsWith("/eapi/artist/privilege")
-                                || path.startsWith("/eapi/playlist/privilege")
-                                || path.startsWith("/eapi/song/enhance/privilege")
-                                || path.startsWith("/eapi/v1/artist")
-                                || path.startsWith("/eapi/v1/album")
-                                || path.startsWith("/eapi/v1/discovery/new/songs")
-                                || path.startsWith("/eapi/v1/discovery/recommend/songs")
-                                || path.startsWith("/eapi/v1/play/record")
-                                || path.startsWith("/eapi/v1/search/get")
-                                || path.startsWith("/eapi/v3/playlist/detail")
-                                || path.startsWith("/eapi/v3/song/detail")) {
-                            String original = (String) param.getResult();
-                            String modified = Handler.modifyByRegex(original);
-                            param.setResult(modified);
+                    CloundMusicPackage.init(lpparam);
 
-                            if (path.startsWith("/eapi/batch")) {
-                                Handler.cacheLikePlaylistId(original);
+                    findAndHookMethod(CloundMusicPackage.HttpEapi.CLASS, "a", String.class, new XC_MethodHook() {
+                        @Override
+                        protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                            String url = CloundMusicPackage.HttpEapi.getUrl(param.thisObject);
+                            if (url.startsWith("http://music.163.com/eapi/")) {
+                                String path = url.replace("http://music.163.com", "");
+                                if (path.startsWith("/eapi/batch")
+                                        || path.startsWith("/eapi/album/privilege")
+                                        || path.startsWith("/eapi/artist/privilege")
+                                        || path.startsWith("/eapi/playlist/privilege")
+                                        || path.startsWith("/eapi/song/enhance/privilege")
+                                        || path.startsWith("/eapi/v1/artist")
+                                        || path.startsWith("/eapi/v1/album")
+                                        || path.startsWith("/eapi/v1/discovery/new/songs")
+                                        || path.startsWith("/eapi/v1/discovery/recommend/songs")
+                                        || path.startsWith("/eapi/v1/play/record")
+                                        || path.startsWith("/eapi/v1/search/get")
+                                        || path.startsWith("/eapi/v3/playlist/detail")
+                                        || path.startsWith("/eapi/v3/song/detail")) {
+                                    String original = (String) param.getResult();
+                                    String modified = Handler.modifyByRegex(original);
+                                    param.setResult(modified);
+
+                                    if (path.startsWith("/eapi/batch")) {
+                                        Handler.cacheLikePlaylistId(original);
+                                    }
+
+                                } else if (path.startsWith("/eapi/song/enhance/player/url")) {
+                                    String modified = Handler.modifyPlayerOrDownloadApi(path, (String) param.getResult(), "player");
+                                    param.setResult(modified);
+
+                                } else if (path.startsWith("/eapi/song/enhance/download/url")) {
+                                    String modified = Handler.modifyPlayerOrDownloadApi(path, (String) param.getResult(), "download");
+                                    param.setResult(modified);
+
+                                } else if (path.startsWith("/eapi/v1/playlist/manipulate/tracks")) {
+                                    String modified = Handler.modifyPlaylistManipulateApi((String) param.getResult());
+                                    param.setResult(modified);
+
+                                } else if (path.startsWith("/eapi/song/like")) {
+                                    String modified = Handler.modifyLike((String) param.getResult());
+                                    param.setResult(modified);
+                                }
                             }
-
-
-                        } else if (path.startsWith("/eapi/song/enhance/player/url")) {
-                            String modified = Handler.modifyPlayerOrDownloadApi(path, (String) param.getResult(), "player");
-                            param.setResult(modified);
-
-                        } else if (path.startsWith("/eapi/song/enhance/download/url")) {
-                            String modified = Handler.modifyPlayerOrDownloadApi(path, (String) param.getResult(), "download");
-                            param.setResult(modified);
-
-                        } else if (path.startsWith("/eapi/v1/playlist/manipulate/tracks")) {
-                            String modified = Handler.modifyPlaylistManipulateApi((String) param.getResult());
-                            param.setResult(modified);
-
-                        } else if (path.startsWith("/eapi/song/like")) {
-                            String modified = Handler.modifyLike(path, (String) param.getResult());
-                            param.setResult(modified);
                         }
-                    }
-                }
-            });
+                    });
 
 
-            // save the post data about adding song to playlist
-            hookMethod(findConstructorExact(CloundMusicPackage.HttpEapi.CLASS, String.class, Map.class), new XC_MethodHook() {
-                @Override
-                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    if (param.args[0].equals("v1/playlist/manipulate/tracks")) {
-                        Handler.playlistManipulateDataMap = (Map) param.args[1];
-                    }
-                }
-            });
+                    // save latest post data
+                    hookMethod(findConstructorExact(CloundMusicPackage.HttpEapi.CLASS, String.class, Map.class, String.class, boolean.class), new XC_MethodHook() {
+                        @Override
+                        protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                            String api = (String) param.args[0];
+                            if (api.startsWith("v1/playlist/manipulate/tracks")) {
+                                Handler.LAST_PLAYLIST_MANIPULATE_MAP = (Map) param.args[1];
+                            } else if (api.startsWith("song/like")) {
+                                Handler.LAST_LIKE_STRING = (String) param.args[0];
+                            }
+                        }
+                    });
 
 
-            // calc md5
-            findAndHookMethod(CloundMusicPackage.NeteaseMusicUtils.CLASS, "a", String.class, new XC_MethodHook() {
-                @Override
-                protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                    String path = ((String) param.args[0]);
-                    if (path.contains("/netease/cloudmusic/Cache/Download/")) {
-                        String md5 = Utility.getLastPartOfString(path, "/");
-                        param.setResult(md5);
-                    }
-                }
-            });
+                    // calc md5
+                    findAndHookMethod(CloundMusicPackage.NeteaseMusicUtils.CLASS, "a", String.class, new XC_MethodHook() {
+                        @Override
+                        protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                            String path = ((String) param.args[0]);
+                            if (path.contains("/netease/cloudmusic/Cache/Download/")) {
+                                String md5 = Utility.getLastPartOfString(path, "/");
+                                param.setResult(md5);
+                            }
+                        }
+                    });
 
 
-            // oversea mode
-            if (Settings.isOverseaModeEnabled()) {
-                findAndHookMethod(CloundMusicPackage.org2.apache.http.impl.client.AbstractHttpClient.CLASS,
-                        "execute", CloundMusicPackage.org2.apache.http.client.methods.HttpUriRequest.CLASS, new XC_MethodHook() {
+                    // oversea mode
+                    if (Settings.isOverseaModeEnabled()) {
+                        findAndHookMethod(findMamClass(AbstractHttpClient.class), "execute", findMamClass(HttpUriRequest.class), new XC_MethodHook() {
+                            Class HttpRequestBase = findMamClass(HttpRequestBase.class); // included GET, POST and etc.
+
                             @Override
                             protected void beforeHookedMethod(MethodHookParam param) throws URISyntaxException {
-                                if (CloundMusicPackage.org2.apache.http.client.methods.HttpRequestBase.CLASS.isInstance(param.args[0])) {
+                                if (HttpRequestBase.isInstance(param.args[0])) {
                                     Object object = param.args[0];
                                     URI uri = (URI) callMethod(object, "getURI");
                                     String host = uri.getHost();
@@ -128,16 +143,18 @@ public class Main implements IXposedHookLoadPackage {
                                     }
                                 }
                             }
-                        }
-                );
-            }
+                        });
+                    }
 
 
-            // xiami
-            findAndHookMethod(CloundMusicPackage.HttpEapi.CLASS.getPackage().getName() + ".a", lpparam.classLoader, "b", new XC_MethodHook() {
-                @Override
-                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    callMethod(param.getResult(), "addRequestInterceptor", Proxy.newProxyInstance(lpparam.classLoader, new Class[]{CloundMusicPackage.org2.apache.http.HttpRequestInterceptor.CLASS}, new InvocationHandler() {
+                    // xiami
+                    findAndHookMethod(CloundMusicPackage.HttpEapi.CLASS.getPackage().getName() + ".a", lpparam.classLoader, "b", new XC_MethodHook() {
+                        Class HttpRequestInterceptor = findMamClass(HttpRequestInterceptor.class);
+                        Method addRequestInterceptor = findMethodExact(findMamClass(AbstractHttpClient.class), "addRequestInterceptor", HttpRequestInterceptor);
+
+                        @Override
+                        protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                            addRequestInterceptor.invoke(param.getResult(), Proxy.newProxyInstance(lpparam.classLoader, new Class[]{HttpRequestInterceptor}, new InvocationHandler() {
                                 @Override
                                 public Object invoke(Object o, Method method, Object[] args) throws Throwable {
                                     if (method.getName().equals("process")) {
@@ -152,16 +169,16 @@ public class Main implements IXposedHookLoadPackage {
                                             callMethod(httpRequest, "removeHeaders", "Referer");
 
                                             // 避免开通联通流量包后听不了
-                                            if ((boolean) callMethod(httpRequest, "containsHeader", "Authorization")) {
+                                            if ((boolean) callMethod(httpRequest, "containsHeader", "Authorization"))
                                                 return callMethod(httpRequest, "setHeader", "Authorization", "Basic MzAwMDAwNDU5MDpGRDYzQTdBNTM0NUMxMzFF");
-                                            }
                                         }
                                         return null;
                                     }
                                     return method.invoke(o, args);
                                 }
-                            })
-                    );
+                            }));
+                        }
+                    });
                 }
             });
         }

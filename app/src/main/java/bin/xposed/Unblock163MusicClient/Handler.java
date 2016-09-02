@@ -21,7 +21,6 @@ import java.util.regex.Pattern;
 
 import de.robv.android.xposed.XposedHelpers;
 
-
 public class Handler {
 
     final private static Pattern REX_PL = Pattern.compile("\"pl\":\\d+");
@@ -37,8 +36,9 @@ public class Handler {
         }
     };
 
-    protected static Map playlistManipulateDataMap;
-    protected static long likePlaylistId = 0;
+    protected static Map LAST_PLAYLIST_MANIPULATE_MAP;
+    protected static String LAST_LIKE_STRING;
+    protected static long LIKE_PLAYLIST_ID = 0;
 
 
     protected static String modifyByRegex(String originalContent) {
@@ -88,22 +88,25 @@ public class Handler {
 
         if (code != 200) {
             @SuppressWarnings("unchecked")
-            String postData = Utility.serialData(playlistManipulateDataMap);
+            String postData = Utility.serialData(LAST_PLAYLIST_MANIPULATE_MAP);
             return Http.post("http://music.xposed.tk/xapi/v1/manipulate", postData, true);
         }
         return originalContent;
     }
 
-    protected static String modifyLike(String path, String originalContent) throws JSONException, IOException, URISyntaxException {
-        if (likePlaylistId != 0) {
-            JSONObject originalJson = new JSONObject(originalContent);
-            int code = originalJson.getInt("code");
 
-            if (code != 200) {
-                String postData = new URI(path).getQuery() + "&playlistId=" + likePlaylistId;
-                return Http.post("http://music.xposed.tk/xapi/v1/like", postData, true);
-            }
+    protected static String modifyLike(String originalContent) throws JSONException, IOException, URISyntaxException {
+        JSONObject originalJson = new JSONObject(originalContent);
+        int code = originalJson.getInt("code");
+        if (code != 200) {
+            if (LIKE_PLAYLIST_ID == 0)
+                CloundMusicPackage.CAC.getMyPlaylist();
+
+            String query = new URI(LAST_LIKE_STRING).getQuery();
+            String postData = query + "&playlistId=" + LIKE_PLAYLIST_ID;
+            return Http.post("http://music.xposed.tk/xapi/v1/like", postData, true);
         }
+
         return originalContent;
     }
 
@@ -190,8 +193,8 @@ public class Handler {
     }
 
     protected static void cacheLikePlaylistId(String originalContent) throws JSONException {
-        if (likePlaylistId == 0 && originalContent.contains("\"/api/user/playlist\"")) {
-            likePlaylistId = new JSONObject(originalContent)
+        if (LIKE_PLAYLIST_ID == 0 && originalContent.contains("\"/api/user/playlist\"")) {
+            LIKE_PLAYLIST_ID = new JSONObject(originalContent)
                     .getJSONObject("/api/user/playlist")
                     .getJSONArray("playlist")
                     .getJSONObject(0).getLong("id");
