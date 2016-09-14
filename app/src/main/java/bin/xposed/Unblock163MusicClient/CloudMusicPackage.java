@@ -23,7 +23,7 @@ import static de.robv.android.xposed.XposedHelpers.newInstance;
 @SuppressWarnings({"deprecation", "unchecked"})
 public class CloudMusicPackage {
 
-    private static String SHORT_VERSION;
+    private static String VERSION;
     private static ClassLoader CLASS_LOADER;
 
     public static void init(XC_LoadPackage.LoadPackageParam lpparam) throws PackageManager.NameNotFoundException {
@@ -32,9 +32,7 @@ public class CloudMusicPackage {
         // get version
         Object activityThread = callStaticMethod(findClass("android.app.ActivityThread", null), "currentActivityThread");
         Context systemContext = (Context) callMethod(activityThread, "getSystemContext");
-        String versionName = systemContext.getPackageManager().getPackageInfo(lpparam.packageName, 0).versionName;
-        String[] versionNameSplits = versionName.split("\\.");
-        SHORT_VERSION = versionNameSplits[0] + "." + versionNameSplits[1];
+        VERSION = systemContext.getPackageManager().getPackageInfo(lpparam.packageName, 0).versionName;
 
         // NeteaseMusicApplication
         NeteaseMusicApplication.CLASS = findClass("com.netease.cloudmusic.NeteaseMusicApplication", lpparam.classLoader);
@@ -43,17 +41,16 @@ public class CloudMusicPackage {
         NeteaseMusicUtils.CLASS = findClass("com.netease.cloudmusic.utils.NeteaseMusicUtils", lpparam.classLoader);
 
         // http api
-        switch (SHORT_VERSION) {
-            case "3.0":
-                HttpEapi.CLASS = findClass("com.netease.cloudmusic.h.c", lpparam.classLoader);
-                break;
-            case "3.2":
-                HttpEapi.CLASS = findClass("com.netease.cloudmusic.i.b", lpparam.classLoader);
-                break;
-            default:
-                HttpEapi.CLASS = findClass("com.netease.cloudmusic.i.f", lpparam.classLoader);
-        }
+        if (VERSION.startsWith("3.0"))
+            HttpEapi.CLASS = findClass("com.netease.cloudmusic.h.c", lpparam.classLoader);
+        else if (VERSION.startsWith("3.2"))
+            HttpEapi.CLASS = findClass("com.netease.cloudmusic.i.b", lpparam.classLoader);
+        else if (VERSION.startsWith("3.7.2"))
+            HttpEapi.CLASS = findClass("com.netease.cloudmusic.i.g", lpparam.classLoader);
+        else
+            HttpEapi.CLASS = findClass("com.netease.cloudmusic.i.f", lpparam.classLoader);
     }
+
 
     public static Class findMamClass(Class clazz) {
         try {
@@ -66,7 +63,7 @@ public class CloudMusicPackage {
     public static class CAC {
         public static void getMyPlaylist() {
             Object object;
-            if (SHORT_VERSION.equals("3.0"))
+            if (VERSION.startsWith("3.0"))
                 object = XposedHelpers.getStaticObjectField(findClass("com.netease.cloudmusic.b.a.c", CLASS_LOADER), "b");
             else
                 object = XposedHelpers.getStaticObjectField(findClass("com.netease.cloudmusic.c.a.c", CLASS_LOADER), "a");
@@ -113,14 +110,14 @@ public class CloudMusicPackage {
         public static Field URL_FIELD;
 
         public static String post(String path, Map dataMap) {
-            if (SHORT_VERSION.equals("3.0"))
+            if (VERSION.startsWith("3.0"))
                 return (String) callMethod(callMethod(newInstance(CLASS, path, dataMap), "c"), "h");
             else
                 return (String) callMethod(callMethod(newInstance(CLASS, path, dataMap), "c"), "i");
         }
 
         public static String getDefaultCookie() throws UnsupportedEncodingException, JSONException {
-            if (SHORT_VERSION.equals("3.0")) {
+            if (VERSION.startsWith("3.0")) {
                 List<org.apache.http.cookie.Cookie> cookiesList = (List<org.apache.http.cookie.Cookie>) callStaticMethod(CLASS, "f");
                 return Utility.serialCookies(cookiesList);
             } else

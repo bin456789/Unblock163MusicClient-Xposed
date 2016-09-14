@@ -14,6 +14,8 @@ import java.lang.reflect.Proxy;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.util.Map;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
@@ -109,13 +111,14 @@ public class Main implements IXposedHookLoadPackage {
 
                     // calc md5
                     findAndHookMethod(CloudMusicPackage.NeteaseMusicUtils.CLASS, "a", String.class, new XC_MethodHook() {
+                        Pattern REX_MD5 = Pattern.compile("[a-f0-9]{32}", Pattern.CASE_INSENSITIVE);
+
                         @Override
                         protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                            String path = ((String) param.args[0]);
-                            if (path.contains("/netease/cloudmusic/Cache/Download/")) {
-                                String md5 = Utility.getLastPartOfString(path, "/");
-                                param.setResult(md5);
-                            }
+                            String path = (String) param.args[0];
+                            Matcher matcher = REX_MD5.matcher(path);
+                            if (matcher.find())
+                                param.setResult(matcher.group());
                         }
                     });
 
@@ -162,16 +165,18 @@ public class Main implements IXposedHookLoadPackage {
 
                                         Object originalHttpRequest = callMethod(httpRequest, "getOriginal");
                                         URI originalURI = (URI) callMethod(originalHttpRequest, "getURI");
-                                        if (originalURI.getHost().endsWith("xiami.com")) {
-
-                                            // 避免发送网易cookie到虾米
+                                        if (!(originalURI.getHost().endsWith("126.net") || originalURI.getHost().endsWith("163.com"))) {
+                                            // 避免发送网易cookie到第三方
                                             callMethod(httpRequest, "removeHeader", callMethod(httpRequest, "getFirstHeader", "Cookie"));
                                             callMethod(httpRequest, "removeHeaders", "Referer");
 
-                                            // 避免开通联通流量包后听不了
-                                            if ((boolean) callMethod(httpRequest, "containsHeader", "Authorization"))
-                                                return callMethod(httpRequest, "setHeader", "Authorization", "Basic MzAwMDAwNDU5MDpGRDYzQTdBNTM0NUMxMzFF");
+                                            if (originalURI.getHost().endsWith("xiami.com")) {
+                                                // 避免开通联通流量包后听不了
+                                                if ((boolean) callMethod(httpRequest, "containsHeader", "Authorization"))
+                                                    return callMethod(httpRequest, "setHeader", "Authorization", "Basic MzAwMDAwNDU5MDpGRDYzQTdBNTM0NUMxMzFF");
+                                            }
                                         }
+
                                         return null;
                                     }
                                     return method.invoke(o, args);
