@@ -43,7 +43,7 @@ public class CloudMusicPackage {
         // http api
         if (VERSION.startsWith("3.0"))
             HttpEapi.CLASS = findClass("com.netease.cloudmusic.h.c", lpparam.classLoader);
-        else if (VERSION.startsWith("3.2"))
+        else if (VERSION.startsWith("3.2") || VERSION.startsWith("3.7.3"))
             HttpEapi.CLASS = findClass("com.netease.cloudmusic.i.b", lpparam.classLoader);
         else if (VERSION.startsWith("3.7.2"))
             HttpEapi.CLASS = findClass("com.netease.cloudmusic.i.g", lpparam.classLoader);
