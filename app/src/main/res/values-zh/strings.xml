@@ -11,4 +11,8 @@
 
     <string name="pref_oversea_mode_title">海外模式</string>
     <string name="pref_oversea_mode_description">国内用户切勿勾选，否则会降低缓冲速度</string>
+
+    <string name="pref_dislike_confirm_title">取消红心前确认</string>
+    <string name="dislike_confirm_question">确定取消红心？</string>
+    <string name="confirm">确定</string>
 </resources>

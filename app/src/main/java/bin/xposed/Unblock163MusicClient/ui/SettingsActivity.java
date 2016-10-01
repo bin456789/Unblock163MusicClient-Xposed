@@ -13,7 +13,6 @@ import android.preference.PreferenceManager;
 import android.widget.Toast;
 
 import bin.xposed.Unblock163MusicClient.R;
-import bin.xposed.Unblock163MusicClient.Settings;
 
 public class SettingsActivity extends PreferenceActivity implements OnSharedPreferenceChangeListener {
 
@@ -91,8 +90,6 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        if (Settings.OVERSEA_MODE_KEY.equals(key)) {
-            Toast.makeText(this, R.string.pref_hint_reboot_setting_changed, Toast.LENGTH_SHORT).show();
-        }
+        Toast.makeText(this, R.string.pref_hint_reboot_setting_changed, Toast.LENGTH_SHORT).show();
     }
 }

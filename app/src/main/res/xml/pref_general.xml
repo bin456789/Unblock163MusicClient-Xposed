@@ -4,4 +4,8 @@
         android:key="OVERSEA_MODE"
         android:summary="@string/pref_oversea_mode_description"
         android:title="@string/pref_oversea_mode_title" />
+    <CheckBoxPreference
+        android:defaultValue="false"
+        android:key="DISLIKE_CONFIRM"
+        android:title="@string/pref_dislike_confirm_title" />
 </PreferenceScreen>

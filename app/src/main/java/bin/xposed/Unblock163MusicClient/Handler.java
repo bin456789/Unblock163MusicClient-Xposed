@@ -6,11 +6,9 @@ import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.reflect.InvocationTargetException;
 import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -21,8 +19,15 @@ import java.util.regex.Pattern;
 
 import de.robv.android.xposed.XposedHelpers;
 
-public class Handler {
+class Handler {
 
+
+    final static LinkedHashMap<Long, Song> THIRD_PARTY_MUSIC_INFO = new LinkedHashMap<Long, Song>() {
+        @Override
+        protected boolean removeEldestEntry(Entry eldest) {
+            return size() > 10;
+        }
+    };
     final private static Pattern REX_PL = Pattern.compile("\"pl\":\\d+");
     final private static Pattern REX_DL = Pattern.compile("\"dl\":\\d+");
     final private static Pattern REX_ST = Pattern.compile("\"st\":-\\d+");
@@ -35,25 +40,24 @@ public class Handler {
             put("a", 64000);
         }
     };
+    static Map<String, String> LAST_PLAYLIST_MANIPULATE_MAP;
+    static String LAST_LIKE_STRING;
+    private static long LIKE_PLAYLIST_ID = -1;
 
-    protected static Map LAST_PLAYLIST_MANIPULATE_MAP;
-    protected static String LAST_LIKE_STRING;
-    protected static long LIKE_PLAYLIST_ID = 0;
-
-
-    protected static String modifyByRegex(String originalContent) {
-        String modified = originalContent;
-        if (modified != null) {
-            modified = REX_ST.matcher(modified).replaceAll("\"st\":0");
-            modified = REX_PL.matcher(modified).replaceAll("\"pl\":320000");
-            modified = REX_DL.matcher(modified).replaceAll("\"dl\":320000");
-            modified = REX_SUBP.matcher(modified).replaceAll("\"subp\":1");
-            return modified;
+    static String modifyByRegex(String originalContent) {
+        if (originalContent != null) {
+            originalContent = REX_ST.matcher(originalContent).replaceAll("\"st\":0");
+            originalContent = REX_PL.matcher(originalContent).replaceAll("\"pl\":320000");
+            originalContent = REX_DL.matcher(originalContent).replaceAll("\"dl\":320000");
+            originalContent = REX_SUBP.matcher(originalContent).replaceAll("\"subp\":1");
         }
-        return null;
+        return originalContent;
     }
 
-    protected static String modifyPlayerOrDownloadApi(String path, String originalContent, String from) throws JSONException, IllegalAccessException, InstantiationException, InvocationTargetException, IOException {
+    static String modifyPlayerOrDownloadApi(String path, String originalContent, String from) throws JSONException, IllegalAccessException, InstantiationException, InvocationTargetException {
+        if (originalContent == null)
+            return null;
+
         JSONObject originalJson = new JSONObject(originalContent);
 
         int expectBitrate;
@@ -82,47 +86,59 @@ public class Handler {
         return originalContent;
     }
 
-    protected static String modifyPlaylistManipulateApi(String originalContent) throws JSONException, IOException {
+    static String modifyPlaylistManipulateApi(String originalContent) throws Throwable {
         JSONObject originalJson = new JSONObject(originalContent);
         int code = originalJson.getInt("code");
 
         if (code != 200) {
-            @SuppressWarnings("unchecked")
-            String postData = Utility.serialData(LAST_PLAYLIST_MANIPULATE_MAP);
-            return Http.post("http://music.xposed.tk/xapi/v1/manipulate", postData, true);
+            return Http.post("http://music.xposed.tk/xapi/v1/manipulate", LAST_PLAYLIST_MANIPULATE_MAP).getResponseText();
         }
         return originalContent;
     }
 
-
-    protected static String modifyLike(String originalContent) throws JSONException, IOException, URISyntaxException {
+    static String modifyLike(String originalContent) throws Throwable {
         JSONObject originalJson = new JSONObject(originalContent);
         int code = originalJson.getInt("code");
         if (code != 200) {
-            if (LIKE_PLAYLIST_ID == 0)
+            if (LIKE_PLAYLIST_ID == -1)
                 CloudMusicPackage.CAC.getMyPlaylist();
 
             String query = new URI(LAST_LIKE_STRING).getQuery();
-            String postData = query + "&playlistId=" + LIKE_PLAYLIST_ID;
-            return Http.post("http://music.xposed.tk/xapi/v1/like", postData, true);
+            Map<String, String> dataMap = Utility.queryToMap(query);
+            dataMap.put("playlistId", String.valueOf(LIKE_PLAYLIST_ID));
+
+            return Http.post("http://music.xposed.tk/xapi/v1/like", dataMap).getResponseText();
         }
 
         return originalContent;
     }
 
-    protected static boolean processSong(JSONObject originalSong, int expectBitrate, String from) {
+    static void cacheLikePlaylistId(String originalContent) throws JSONException {
+        if (LIKE_PLAYLIST_ID == -1 && originalContent.contains("\"/api/user/playlist\"")) {
+            LIKE_PLAYLIST_ID = new JSONObject(originalContent)
+                    .getJSONObject("/api/user/playlist")
+                    .getJSONArray("playlist")
+                    .getJSONObject(0).getLong("id");
+        }
+    }
+
+
+    private static boolean processSong(JSONObject originalSong, int expectBitrate, String from) {
         Song oldSong = new Song(originalSong);
+
         if ((oldSong.fee != 0 && oldSong.payed == 0 && oldSong.br < expectBitrate)
                 || oldSong.url == null
                 && oldSong.uf == null) {
 
+            boolean isAccessable;
+
             // p
             JSONObject pJson = Handler.getSongByRemoteApi(oldSong.id, expectBitrate);
             Song song = new Song(pJson);
-            boolean isAccessable = song.checkAccessable();
+            isAccessable = song.checkAccessable();
 
             // m
-            if (!isAccessable && song.url != null) {
+            if (!isAccessable) {
                 song.url = Handler.convertPtoM(song.url);
                 isAccessable = song.checkAccessable();
             }
@@ -157,56 +173,71 @@ public class Handler {
                         .put("size", song.size)
                         .put("type", song.type)
                         .put("url", song.url);
+
+                if ("player".equals(from))
+                    THIRD_PARTY_MUSIC_INFO.put(song.id, song);
+
             } catch (JSONException e) {
                 return false;
             }
             return true;
+        } else {
+            if ("player".equals(from))
+                THIRD_PARTY_MUSIC_INFO.remove(oldSong.id);
+            return false;
         }
-        return false;
     }
 
-    protected static JSONObject getSongByRemoteApi(long songId, int expectBitrate) {
+    private static JSONObject getSongByRemoteApi(final long songId, final int expectBitrate) {
         try {
-            String raw = Http.post("http://music.xposed.tk/xapi/v1/song", String.format("id=%s&br=%s&withHQ=1", songId, expectBitrate), true);
+            Map<String, String> map = new LinkedHashMap<String, String>() {{
+                put("id", String.valueOf(songId));
+                put("br", String.valueOf(expectBitrate));
+                put("withHQ", "1");
+            }};
+            String raw = Http.post("http://music.xposed.tk/xapi/v1/song", map).getResponseText();
             return new JSONObject(raw).getJSONObject("data");
-        } catch (Exception e) {
+        } catch (Throwable t) {
             return null;
         }
     }
 
-    protected static JSONObject getSongByRemoteApiEnhance(long songId, int expectBitrate) {
+    private static JSONObject getSongByRemoteApiEnhance(final long songId, final int expectBitrate) {
         try {
-            String raw = Http.post("http://music.xposed.tk/xapi/v1/songx", String.format("id=%s&br=%s", songId, expectBitrate), true);
+            Map<String, String> map = new LinkedHashMap<String, String>() {{
+                put("id", String.valueOf(songId));
+                put("br", String.valueOf(expectBitrate));
+            }};
+            String raw = Http.post("http://music.xposed.tk/xapi/v1/songx", map).getResponseText();
             return new JSONObject(raw).getJSONObject("data");
-        } catch (Exception e) {
+        } catch (Throwable t) {
             return null;
         }
     }
 
-    protected static JSONObject getSongByXiami(long songId, int expectBitrate) {
+    private static JSONObject getSongByXiami(final long songId, final int expectBitrate) {
         try {
-            String raw = Http.post("http://music.xposed.tk/xapi/v1/xiami/match", String.format("id=%s&br=%s", songId, expectBitrate), true);
+            Map<String, String> map = new LinkedHashMap<String, String>() {{
+                put("id", String.valueOf(songId));
+                put("br", String.valueOf(expectBitrate));
+            }};
+            String raw = Http.post("http://music.xposed.tk/xapi/v1/3rd/match", map).getResponseText();
             return new JSONObject(raw).getJSONObject("data");
-        } catch (Exception e) {
+        } catch (Throwable t) {
             return null;
         }
     }
 
-    protected static void cacheLikePlaylistId(String originalContent) throws JSONException {
-        if (LIKE_PLAYLIST_ID == 0 && originalContent.contains("\"/api/user/playlist\"")) {
-            LIKE_PLAYLIST_ID = new JSONObject(originalContent)
-                    .getJSONObject("/api/user/playlist")
-                    .getJSONArray("playlist")
-                    .getJSONObject(0).getLong("id");
-        }
-    }
-
-    protected static String convertPtoM(String pUrl) {
-        return "http://m2" + pUrl.substring(pUrl.indexOf('.'));
+    private static String convertPtoM(String pUrl) {
+        if (pUrl != null)
+            return "http://m2" + pUrl.substring(pUrl.indexOf('.'));
+        else
+            return null;
     }
 
 
-    protected static JSONObject getSongByPlayerApi(long songId, int expectBitrate) {
+    @Deprecated
+    private static JSONObject getSongByPlayerApi(long songId, int expectBitrate) {
         try {
             String ids = URLEncoder.encode(String.format("[\"%s_0\"]", songId), "UTF-8");
             String url = String.format("song/enhance/player/url?br=%s&ids=%s", expectBitrate, ids);
@@ -217,7 +248,8 @@ public class Handler {
         }
     }
 
-    protected static JSONObject getSongByDownloadApi(long songId, int expectBitrate) {
+    @Deprecated
+    private static JSONObject getSongByDownloadApi(long songId, int expectBitrate) {
         String url = String.format("song/enhance/download/url?br=%s&id=%s_0", expectBitrate, songId);
         try {
             String raw = CloudMusicPackage.HttpEapi.post(url, null);
@@ -227,12 +259,13 @@ public class Handler {
         }
     }
 
-
-    protected static String generateUrl(long fid) {
+    @Deprecated
+    private static String generateUrl(long fid) {
         return (String) XposedHelpers.callStaticMethod(CloudMusicPackage.NeteaseMusicUtils.CLASS, "a", fid);
     }
 
-    protected static JSONObject getSongByDetailApi(long songId, int expectBitrate) {
+    @Deprecated
+    private static JSONObject getSongByDetailApi(long songId, int expectBitrate) {
         List<Long> songIds = new ArrayList<>();
         songIds.add(songId);
         try {
@@ -242,7 +275,8 @@ public class Handler {
         }
     }
 
-    protected static JSONObject[] getSongByDetailApi(List<Long> songIds, int expectBitrate) throws JSONException, InvocationTargetException, InstantiationException, UnsupportedEncodingException, IllegalAccessException {
+    @Deprecated
+    private static JSONObject[] getSongByDetailApi(List<Long> songIds, int expectBitrate) throws JSONException, InvocationTargetException, InstantiationException, UnsupportedEncodingException, IllegalAccessException {
         JSONObject[] returnObjects = new JSONObject[songIds.size()];
 
         JSONArray c = new JSONArray();

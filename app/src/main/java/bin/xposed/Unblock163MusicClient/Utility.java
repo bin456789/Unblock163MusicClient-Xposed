@@ -1,5 +1,10 @@
 package bin.xposed.Unblock163MusicClient;
 
+import android.content.Context;
+import android.content.pm.PackageManager;
+import android.content.res.Resources;
+import android.text.TextUtils;
+
 import org.apache.http.cookie.Cookie;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -11,25 +16,26 @@ import org.xbill.DNS.Type;
 import java.io.UnsupportedEncodingException;
 import java.net.URLEncoder;
 import java.util.Iterator;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-public class Utility {
+class Utility {
     private static SimpleResolver CN_DNS_RESOLVER;
 
-    public static String getFirstPartOfString(String str, String separator) {
+    private static String getFirstPartOfString(String str, String separator) {
         return str.substring(0, str.indexOf(separator));
     }
 
-    public static String getLastPartOfString(String str, String separator) {
+    static String getLastPartOfString(String str, String separator) {
         return str.substring(str.lastIndexOf(separator) + 1);
     }
 
-    public static String getFileName(String url) {
+    static String getFileName(String url) {
         return getFirstPartOfString(getLastPartOfString(url, "/"), ".");
     }
 
-    public static String serialData(JSONObject json) throws UnsupportedEncodingException, JSONException {
+    static String serialData(JSONObject json) throws UnsupportedEncodingException, JSONException {
         StringBuilder result = new StringBuilder();
         boolean first = true;
         Iterator<String> keys = json.keys();
@@ -48,7 +54,7 @@ public class Utility {
         return result.toString();
     }
 
-    public static String serialData(Map<String, String> dataMap) throws UnsupportedEncodingException {
+    static String serialData(Map<String, String> dataMap) throws UnsupportedEncodingException {
         StringBuilder result = new StringBuilder();
         boolean first = true;
 
@@ -67,7 +73,7 @@ public class Utility {
     }
 
     @SuppressWarnings("deprecation")
-    public static String serialCookies(List<Cookie> cookieList) throws UnsupportedEncodingException, JSONException {
+    static String serialCookies(List<Cookie> cookieList) throws UnsupportedEncodingException, JSONException {
         StringBuilder result = new StringBuilder();
         boolean first = true;
         for (Cookie cookie : cookieList) {
@@ -83,7 +89,7 @@ public class Utility {
         return result.toString();
     }
 
-    public static String getIpByHost(String domain) {
+    static String getIpByHost(String domain) {
         try {
             if (CN_DNS_RESOLVER == null)
                 CN_DNS_RESOLVER = new SimpleResolver(Settings.getDnsServer());
@@ -102,4 +108,28 @@ public class Utility {
             return null;
         }
     }
+
+    static String optString(JSONObject json, String key) {
+        // http://code.google.com/p/android/issues/detail?id=13830
+        if (json.isNull(key))
+            return null;
+        else
+            return json.optString(key, null);
+    }
+
+    static Map<String, String> queryToMap(String dataString) {
+        Map<String, String> dataMap = new LinkedHashMap<>();
+        if (!TextUtils.isEmpty(dataString)) {
+            for (String s : dataString.split("&")) {
+                String[] data = s.split("=");
+                dataMap.put(data[0], data[1]);
+            }
+        }
+        return dataMap;
+    }
+
+    static Resources getModuleResources() throws PackageManager.NameNotFoundException {
+        return CloudMusicPackage.NeteaseMusicApplication.getApplication().createPackageContext(BuildConfig.APPLICATION_ID, Context.CONTEXT_IGNORE_SECURITY).getResources();
+    }
+
 }
