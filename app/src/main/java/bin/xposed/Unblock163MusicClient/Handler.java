@@ -42,6 +42,7 @@ class Handler {
     };
     static Map<String, String> LAST_PLAYLIST_MANIPULATE_MAP;
     static String LAST_LIKE_STRING;
+    static String XAPI = "http://xmusic.xmusic.top/xapi/v1/";
     private static long LIKE_PLAYLIST_ID = -1;
 
     static String modifyByRegex(String originalContent) {
@@ -91,7 +92,7 @@ class Handler {
         int code = originalJson.getInt("code");
 
         if (code != 200) {
-            return Http.post("http://music.xposed.tk/xapi/v1/manipulate", LAST_PLAYLIST_MANIPULATE_MAP).getResponseText();
+            return Http.post(XAPI + "manipulate", LAST_PLAYLIST_MANIPULATE_MAP).getResponseText();
         }
         return originalContent;
     }
@@ -107,7 +108,7 @@ class Handler {
             Map<String, String> dataMap = Utility.queryToMap(query);
             dataMap.put("playlistId", String.valueOf(LIKE_PLAYLIST_ID));
 
-            return Http.post("http://music.xposed.tk/xapi/v1/like", dataMap).getResponseText();
+            return Http.post(XAPI + "like", dataMap).getResponseText();
         }
 
         return originalContent;
@@ -195,7 +196,7 @@ class Handler {
                 put("br", String.valueOf(expectBitrate));
                 put("withHQ", "1");
             }};
-            String raw = Http.post("http://music.xposed.tk/xapi/v1/song", map).getResponseText();
+            String raw = Http.post(XAPI + "song", map).getResponseText();
             return new JSONObject(raw).getJSONObject("data");
         } catch (Throwable t) {
             return null;
@@ -208,7 +209,7 @@ class Handler {
                 put("id", String.valueOf(songId));
                 put("br", String.valueOf(expectBitrate));
             }};
-            String raw = Http.post("http://music.xposed.tk/xapi/v1/songx", map).getResponseText();
+            String raw = Http.post(XAPI + "songx", map).getResponseText();
             return new JSONObject(raw).getJSONObject("data");
         } catch (Throwable t) {
             return null;
@@ -221,7 +222,7 @@ class Handler {
                 put("id", String.valueOf(songId));
                 put("br", String.valueOf(expectBitrate));
             }};
-            String raw = Http.post("http://music.xposed.tk/xapi/v1/3rd/match", map).getResponseText();
+            String raw = Http.post(XAPI + "3rd/match", map).getResponseText();
             return new JSONObject(raw).getJSONObject("data");
         } catch (Throwable t) {
             return null;

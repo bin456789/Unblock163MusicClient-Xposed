@@ -164,6 +164,7 @@ public class Main implements IXposedHookLoadPackage {
                     final Class HttpContext = findMamClass(org.apache.http.protocol.HttpContext.class);
                     final Class HttpRequestBase = findMamClass(org.apache.http.client.methods.HttpRequestBase.class);
                     final Class HttpRoute = findMamClass(org.apache.http.conn.routing.HttpRoute.class);
+                    final String xapiHost = new URI(Handler.XAPI).getHost();
 
                     // 3rd party
                     findAndHookMethod(CloudMusicPackage.HttpEapi.CLASS.getPackage().getName() + ".a$1", lpparam.classLoader,
@@ -181,7 +182,7 @@ public class Main implements IXposedHookLoadPackage {
                                         if (!(host.endsWith("126.net") || host.endsWith("163.com"))) {
 
                                             // 需要发送cookie到自己的服务器
-                                            if (host.endsWith("music.xposed.tk")) {
+                                            if (host.endsWith(xapiHost)) {
                                                 String cookieString = String.format("modver=%s;%s", BuildConfig.VERSION_NAME, CloudMusicPackage.HttpEapi.getDefaultCookie());
                                                 callMethod(originalHttpRequest, "setHeader", "Cookie", cookieString);
                                             } else {
