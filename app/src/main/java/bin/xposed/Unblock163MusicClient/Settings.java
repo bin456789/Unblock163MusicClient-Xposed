@@ -1,14 +1,24 @@
 package bin.xposed.Unblock163MusicClient;
 
+import java.lang.ref.WeakReference;
+
 import de.robv.android.xposed.XSharedPreferences;
 
-final class Settings {
+class Settings {
+    private static WeakReference<XSharedPreferences> xSharedPreferences = new WeakReference<>(null);
 
     private static XSharedPreferences getModuleSharedPreferences() {
-        XSharedPreferences xSharedPreferences = new XSharedPreferences(BuildConfig.APPLICATION_ID);
-        xSharedPreferences.makeWorldReadable();
-        return xSharedPreferences;
+        XSharedPreferences preferences = xSharedPreferences.get();
+        if (preferences == null) {
+            preferences = new XSharedPreferences(BuildConfig.APPLICATION_ID);
+            preferences.makeWorldReadable();
+            xSharedPreferences = new WeakReference<>(preferences);
+        } else {
+            preferences.reload();
+        }
+        return preferences;
     }
+
 
     static boolean isOverseaModeEnabled() {
         return getModuleSharedPreferences().getBoolean("OVERSEA_MODE", false);

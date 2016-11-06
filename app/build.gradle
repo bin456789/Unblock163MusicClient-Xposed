@@ -1,8 +1,8 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 24
-    buildToolsVersion '24.0.3'
+    compileSdkVersion 25
+    buildToolsVersion '25.0.0'
     useLibrary 'org.apache.http.legacy'
     signingConfigs {
         release {
@@ -22,17 +22,17 @@ android {
     defaultConfig {
         applicationId "bin.xposed.Unblock163MusicClient"
         minSdkVersion 9
-        targetSdkVersion 24
-        versionCode 12
-        versionName "0.0.12"
-        setProperty("archivesBaseName", "Unblock163MusicClient-$versionName")
+        targetSdkVersion 25
+        versionCode 13
+        versionName = "0.0.${versionCode}"
+        archivesBaseName = "${applicationId}-${versionName}"
     }
     buildTypes {
         release {
             minifyEnabled true
             shrinkResources true
             zipAlignEnabled true
-            proguardFiles getDefaultProguardFile('proguard-android.txt'), 'proguard-rules.pro'
+            proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
             signingConfig signingConfigs.release
         }
     }
@@ -42,6 +42,7 @@ android {
 }
 
 dependencies {
-    provided files('libs/XposedBridgeApi-30.jar')
+    provided 'de.robv.android.xposed:api:53'
+    provided 'de.robv.android.xposed:api:53:sources'
     compile 'dnsjava:dnsjava:2.1.7'
 }

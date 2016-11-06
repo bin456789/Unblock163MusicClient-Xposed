@@ -13,17 +13,32 @@ import org.xbill.DNS.Record;
 import org.xbill.DNS.SimpleResolver;
 import org.xbill.DNS.Type;
 
+import java.io.BufferedReader;
+import java.io.File;
+import java.io.FileReader;
+import java.io.FileWriter;
+import java.io.FilenameFilter;
+import java.io.IOException;
 import java.io.UnsupportedEncodingException;
+import java.lang.ref.WeakReference;
+import java.lang.reflect.Field;
 import java.net.URLEncoder;
+import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
-class Utility {
-    private static SimpleResolver CN_DNS_RESOLVER;
+import static de.robv.android.xposed.XposedHelpers.callMethod;
+import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
+import static de.robv.android.xposed.XposedHelpers.findClass;
 
-    private static String getFirstPartOfString(String str, String separator) {
+@SuppressWarnings({"unused", "WeakerAccess"})
+class Utility {
+    private static SimpleResolver cnDnsResolver;
+    private static WeakReference<Resources> moduleResources = new WeakReference<>(null);
+
+    static String getFirstPartOfString(String str, String separator) {
         return str.substring(0, str.indexOf(separator));
     }
 
@@ -91,12 +106,12 @@ class Utility {
 
     static String getIpByHost(String domain) {
         try {
-            if (CN_DNS_RESOLVER == null)
-                CN_DNS_RESOLVER = new SimpleResolver(Settings.getDnsServer());
+            if (cnDnsResolver == null)
+                cnDnsResolver = new SimpleResolver(Settings.getDnsServer());
 
             // caches mechanism built-in, just look it up
             Lookup lookup = new Lookup(domain, Type.A);
-            lookup.setResolver(CN_DNS_RESOLVER);
+            lookup.setResolver(cnDnsResolver);
             Record[] records = lookup.run();
             if (lookup.getResult() == Lookup.SUCCESSFUL) {
                 // already random, just pick index 0
@@ -128,8 +143,122 @@ class Utility {
         return dataMap;
     }
 
-    static Resources getModuleResources() throws PackageManager.NameNotFoundException {
-        return CloudMusicPackage.NeteaseMusicApplication.getApplication().createPackageContext(BuildConfig.APPLICATION_ID, Context.CONTEXT_IGNORE_SECURITY).getResources();
+    static Context getSystemContext() {
+        Object activityThread = callStaticMethod(findClass("android.app.ActivityThread", null), "currentActivityThread");
+        return (Context) callMethod(activityThread, "getSystemContext");
+    }
+
+    static Resources getModuleResources() throws PackageManager.NameNotFoundException, IllegalAccessException {
+        Resources resources = moduleResources.get();
+        if (resources == null) {
+            resources = getSystemContext().createPackageContext(BuildConfig.APPLICATION_ID, Context.CONTEXT_IGNORE_SECURITY).getResources();
+            moduleResources = new WeakReference<>(resources);
+        }
+
+        return resources;
+
+        // 或者用 CloudMusicPackage.NeteaseMusicApplication.getApplication()
+    }
+
+
+    static String readFile(File file) {
+        if (file.exists() && file.isFile() && file.canRead()) {
+            StringBuilder sb = new StringBuilder();
+            BufferedReader input = null;
+            try {
+                input = new BufferedReader(new FileReader(file));
+                String line;
+                boolean isFirstLine = true;
+                while ((line = input.readLine()) != null) {
+                    sb.append(line);
+                    if (isFirstLine)
+                        isFirstLine = false;
+                    else
+                        sb.append(System.getProperty("line.separator"));
+                }
+            } catch (IOException e) {
+                e.printStackTrace();
+            } finally {
+                try {
+                    if (input != null)
+                        input.close();
+                } catch (IOException e) {
+                    e.printStackTrace();
+                }
+            }
+            return sb.toString();
+        } else
+            return null;
+    }
+
+    static boolean writeFile(File file, String string) {
+        try {
+            FileWriter fileWriter;
+            fileWriter = new FileWriter(file);
+            fileWriter.write(string);
+            fileWriter.flush();
+            fileWriter.close();
+            return true;
+        } catch (IOException e) {
+            e.printStackTrace();
+            return false;
+        }
+    }
+
+    static File findFirstFile(String dirStr, final String start, final String end) {
+        File[] fs = findFiles(dirStr, start, end, 1);
+        return fs.length > 0 ? fs[0] : null;
+    }
+
+    static File[] findFiles(String dirStr, final String start, final String end, final int limit) {
+        File dir = new File(dirStr);
+
+        return dir.listFiles(new FilenameFilter() {
+            int find = 0;
+
+            @Override
+            public boolean accept(File file, String s) {
+                if (find < limit
+                        && (start == null || s.startsWith(start))
+                        && (end == null || s.endsWith(end))) {
+                    find++;
+                    return true;
+                } else
+                    return false;
+            }
+        });
+    }
+
+    static boolean deleteFile(File file) {
+        return file != null && file.exists() && file.isFile() && file.delete();
+    }
+
+
+    static boolean containsField(Class source, String exact, String start, String end) {
+        return findFirstField(source, exact, start, end) != null;
+    }
+
+    static Field findFirstField(Class source, String exact, String start, String end) {
+        Field[] fs = findFields(source, exact, start, end, 1);
+        return fs.length > 0 ? fs[0] : null;
+    }
+
+    static Field[] findFields(Class source, String exact, String start, String end, int limit) {
+        Field[] fs = source.getDeclaredFields();
+        List<Field> returnFs = new ArrayList<>();
+
+        for (Field f : fs) {
+            if (returnFs.size() == limit)
+                break;
+
+            String s = f.getType().getName();
+            if ((exact == null || s.equals(exact))
+                    && (start == null || s.startsWith(start))
+                    && (end == null || s.endsWith(end)))
+                returnFs.add(f);
+
+        }
+        return returnFs.toArray(new Field[returnFs.size()]);
     }
 
 }

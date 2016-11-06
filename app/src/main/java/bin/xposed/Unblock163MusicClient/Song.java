@@ -1,5 +1,6 @@
 package bin.xposed.Unblock163MusicClient;
 
+import org.json.JSONException;
 import org.json.JSONObject;
 
 import static bin.xposed.Unblock163MusicClient.Utility.optString;
@@ -54,14 +55,26 @@ class Song {
                     responseCode = http.getResponseCode();
                 }
                 if (responseCode >= 200 && responseCode < 400) {
-                    size = http.getFileSize(); // re-calc music length for 3rd party url
+                    size = http.getFileSize(); // re-calc music size for 3rd party url
                     url = tmpUrl;
                     return true;
                 }
             } catch (Throwable t) {
+                t.printStackTrace();
                 return false;
             }
         }
         return false;
+    }
+
+    boolean isMatchedSong() {
+        return matchedPlatform != null;
+    }
+
+    JSONObject getMatchedJson() throws JSONException {
+        return new JSONObject()
+                .put("matchedPlatform", matchedPlatform)
+                .put("matchedSongName", matchedSongName)
+                .put("matchedArtistName", matchedArtistName);
     }
 }

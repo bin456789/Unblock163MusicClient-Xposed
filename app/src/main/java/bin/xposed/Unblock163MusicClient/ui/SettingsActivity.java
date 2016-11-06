@@ -12,6 +12,7 @@ import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
 import android.widget.Toast;
 
+import bin.xposed.Unblock163MusicClient.BuildConfig;
 import bin.xposed.Unblock163MusicClient.R;
 
 public class SettingsActivity extends PreferenceActivity implements OnSharedPreferenceChangeListener {
@@ -40,7 +41,8 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 
     private void showNotActive() {
         new AlertDialog.Builder(this)
-                .setMessage(R.string.pref_hint_reboot_not_active)
+                .setCancelable(false)
+                .setMessage(R.string.hint_reboot_not_active)
                 .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                     public void onClick(DialogInterface dialog, int id) {
                         openXposed();
@@ -51,9 +53,14 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
     }
 
     private void openXposed() {
-        Intent intent = new Intent()
-                .setPackage("de.robv.android.xposed.installer")
-                .putExtra("section", "modules");
+        Intent intent = new Intent("de.robv.android.xposed.installer.OPEN_SECTION");
+        if (getPackageManager().queryIntentActivities(intent, 0).isEmpty()) {
+            intent = getPackageManager().getLaunchIntentForPackage("de.robv.android.xposed.installer");
+        }
+        intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                .putExtra("section", "modules")
+                .putExtra("fragment", 1)
+                .putExtra("module", BuildConfig.APPLICATION_ID);
         startActivity(intent);
     }
 
@@ -62,7 +69,8 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         final PackageManager packageManager = getPackageManager();
         if (packageManager.getComponentEnabledSetting(aliasName) != PackageManager.COMPONENT_ENABLED_STATE_DISABLED) {
             new AlertDialog.Builder(this)
-                    .setMessage(R.string.pref_hint_hide_icon)
+                    .setCancelable(false)
+                    .setMessage(R.string.hint_hide_icon)
                     .setPositiveButton(R.string.ok, new DialogInterface.OnClickListener() {
                         public void onClick(DialogInterface dialog, int id) {
                             packageManager.setComponentEnabledSetting(
@@ -90,6 +98,6 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        Toast.makeText(this, R.string.pref_hint_reboot_setting_changed, Toast.LENGTH_SHORT).show();
+        Toast.makeText(this, R.string.hint_reboot_setting_changed, Toast.LENGTH_SHORT).show();
     }
 }

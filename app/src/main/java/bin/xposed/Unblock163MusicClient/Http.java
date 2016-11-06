@@ -3,7 +3,6 @@ package bin.xposed.Unblock163MusicClient;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-
 class Http extends CloudMusicPackage.HttpBase {
 
     private Http(String method, String urlString, Map<String, String> postData, Map<String, String> additionalHeaders) throws Throwable {
