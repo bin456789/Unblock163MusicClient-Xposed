@@ -1,4 +1,4 @@
-package bin.xposed.Unblock163MusicClient;
+﻿package bin.xposed.Unblock163MusicClient;
 
 import android.app.Activity;
 import android.app.Application;
@@ -51,7 +51,7 @@ class CloudMusicPackage {
         // http api
         if (VERSION.startsWith("3.0"))
             HttpEapi.CLASS = findClass("com.netease.cloudmusic.h.c", lpparam.classLoader);
-        else if (VERSION.startsWith("3.2") || VERSION.startsWith("3.7.3"))
+        else if (VERSION.startsWith("3.2") || VERSION.startsWith("3.7.3") || VERSION.startsWith("3.7.4"))
             HttpEapi.CLASS = findClass("com.netease.cloudmusic.i.b", lpparam.classLoader);
         else if (VERSION.startsWith("3.7.2"))
             HttpEapi.CLASS = findClass("com.netease.cloudmusic.i.g", lpparam.classLoader);
@@ -100,7 +100,10 @@ class CloudMusicPackage {
         static Class CLASS;
 
         static Application getApplication() {
-            return (Application) callStaticMethod(CLASS, "a");
+            if (VERSION.compareTo("3.7.4") >= 0)
+                return (Application) callStaticMethod(CLASS, "b");
+            else
+                return (Application) callStaticMethod(CLASS, "a");
         }
 
         static void showToast(final String text) {
@@ -225,7 +228,7 @@ class CloudMusicPackage {
                     s = "s";
                 else if (VERSION.startsWith("3.1") || VERSION.startsWith("3.3") || VERSION.startsWith("3.4"))
                     s = "ad";
-                else if (VERSION.startsWith("3.2") || VERSION.startsWith("3.7.3"))
+                else if (VERSION.startsWith("3.2") || VERSION.startsWith("3.7.3") || VERSION.startsWith("3.7.4"))
                     s = "r";
                 else
                     s = "ae";
