@@ -70,9 +70,7 @@ class CloudMusicPackage {
             }
             long musicId = (long) callMethod(musicInfo, "getMatchedMusicId");
             int br = (int) callMethod(musicInfo, "getCurrentBitRate");
-            String md5 = (String) callMethod(musicInfo, "getCurrentMd5");
-
-            if (br > 0 && md5.startsWith("0000000000")) {
+            if (br > 0) {
                 String dir = CloudMusicPackage.NeteaseMusicApplication.getMusicCacheDir();
                 String start = String.format("%s-%s", musicId, br);
                 String end = ".xp!";
