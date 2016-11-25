@@ -3,6 +3,8 @@ package bin.xposed.Unblock163MusicClient;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import de.robv.android.xposed.XposedBridge;
+
 import static bin.xposed.Unblock163MusicClient.Utility.optString;
 
 class Song {
@@ -60,8 +62,7 @@ class Song {
                     return true;
                 }
             } catch (Throwable t) {
-                t.printStackTrace();
-                return false;
+                XposedBridge.log(t);
             }
         }
         return false;

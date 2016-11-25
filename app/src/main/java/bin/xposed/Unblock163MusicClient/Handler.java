@@ -15,6 +15,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.regex.Pattern;
 
+import de.robv.android.xposed.XposedBridge;
+
 class Handler {
     static final String XAPI = "http://xmusic.xmusic.top/xapi/v1/";
     private static final Date DOMAIN_EXPIRED_DATE = new GregorianCalendar(2017, 10 - 1, 1).getTime();
@@ -30,18 +32,13 @@ class Handler {
 
 
     static String modifyByRegex(String originalContent) {
-        if (originalContent != null) {
-            originalContent = REX_PL.matcher(originalContent).replaceAll("\"pl\":320000");
-            originalContent = REX_DL.matcher(originalContent).replaceAll("\"dl\":320000");
-            originalContent = REX_SUBP.matcher(originalContent).replaceAll("\"subp\":1");
-        }
+        originalContent = REX_PL.matcher(originalContent).replaceAll("\"pl\":320000");
+        originalContent = REX_DL.matcher(originalContent).replaceAll("\"dl\":320000");
+        originalContent = REX_SUBP.matcher(originalContent).replaceAll("\"subp\":1");
         return originalContent;
     }
 
     static String modifyPlayerOrDownloadApi(String originalContent, Object eapiObj, String from) throws JSONException, IllegalAccessException {
-        if (originalContent == null)
-            return null;
-
         JSONObject originalJson = new JSONObject(originalContent);
         String path = CloudMusicPackage.HttpEapi.getPath(eapiObj);
         int expectBitrate = Integer.parseInt(Uri.parse(path).getQueryParameter("br"));
@@ -69,11 +66,14 @@ class Handler {
         JSONObject originalJson = new JSONObject(originalContent);
         int code = originalJson.getInt("code");
 
-        // 重复收藏 512
-        if (code != 200 && code != 512) {
+        // 重复收藏 502
+        if (code != 200 && code != 502) {
             @SuppressWarnings({"unchecked"})
-            Map<String, String> playlistManipulateMap = CloudMusicPackage.HttpEapi.getRequestMap(eapiObj);
-            return Http.post(XAPI + "manipulate", playlistManipulateMap).getResponseText();
+            Map<String, String> requestMap = CloudMusicPackage.HttpEapi.getRequestMap(eapiObj);
+            String raw = Http.post(XAPI + "manipulate", requestMap).getResponseText();
+            if (Utility.isJSONValid(raw)) {
+                return raw;
+            }
         }
         return originalContent;
     }
@@ -89,7 +89,10 @@ class Handler {
             String query = URI.create(likeString).getQuery();
             Map<String, String> dataMap = Utility.queryToMap(query);
             dataMap.put("playlistId", String.valueOf(likePlaylistId));
-            return Http.post(XAPI + "like", dataMap).getResponseText();
+            String raw = Http.post(XAPI + "like", dataMap).getResponseText();
+            if (Utility.isJSONValid(raw)) {
+                return raw;
+            }
         }
 
         return originalContent;
@@ -105,58 +108,82 @@ class Handler {
         }
     }
 
-    private static boolean processSong(JSONObject originalSong, int expectBitrate, String from) {
-        Song oldSong = new Song(originalSong);
-        Song song = null;
-
-        if (oldSong.uf != null)
-            return false;
-
-        if (expectBitrate > 320000)
-            expectBitrate = 320000;
-
-        if ((oldSong.fee != 0 && oldSong.payed == 0 && oldSong.br < expectBitrate)
-                || oldSong.url == null) {
-            boolean isAccessable;
-
-            // p
-            JSONObject pJson = Handler.getSongByRemoteApi(oldSong.id, expectBitrate);
-            song = new Song(pJson);
-            isAccessable = song.checkAccessable();
-
-            // m
-            if (!isAccessable) {
-                song.url = Handler.convertPtoM(song.url);
-                isAccessable = song.checkAccessable();
-            }
-
-            // p 320k
-            if (!isAccessable && pJson != null && pJson.has("h")) {
-                song = new Song(pJson.optJSONObject("h"));
-                isAccessable = song.checkAccessable();
-            }
-
-            // m 320k
-            if (!isAccessable && song.url != null) {
-                song.url = Handler.convertPtoM(song.url);
-                isAccessable = song.checkAccessable();
-            }
-
-
-            if (!isAccessable) {
-                if (oldSong.code == 404 || ("download".equals(from) && oldSong.code == -110)) {
-                    song = new Song(Handler.getSongBy3rd(oldSong.id, expectBitrate));
-                    song.checkAccessable(); // fix music size
-                } else {
-                    song = new Song(Handler.getSongByRemoteApiEnhance(oldSong.id, expectBitrate));
-                }
+    static String modifyPub(String originalContent, Object eapiObj) throws Throwable {
+        JSONObject originalJson = new JSONObject(originalContent);
+        int code = originalJson.getInt("code");
+        if (code != 200) {
+            @SuppressWarnings({"unchecked"})
+            Map<String, String> requestMap = CloudMusicPackage.HttpEapi.getRequestMap(eapiObj);
+            String raw = Http.post(XAPI + "pub", requestMap).getResponseText();
+            if (Utility.isJSONValid(raw)) {
+                return raw;
             }
         }
 
-        if (song == null || song.url == null)
-            return false;
+        return originalContent;
+    }
 
+    private static boolean processSong(JSONObject originalSong, int expectBitrate, String from) {
+        // 异常在这方法里处理，防止影响下一曲
         try {
+            Song oldSong = new Song(originalSong);
+            Song song = null;
+
+            if (oldSong.uf != null)
+                return false;
+
+            if (expectBitrate > 320000)
+                expectBitrate = 320000;
+
+            if ((oldSong.fee != 0 && oldSong.payed == 0 && oldSong.br < expectBitrate)
+                    || oldSong.url == null) {
+                boolean isAccessable = false;
+
+                // p
+                JSONObject pJson = Handler.getSongByRemoteApi(oldSong.id, expectBitrate);
+                if (pJson != null) {
+                    song = new Song(pJson);
+                    isAccessable = song.checkAccessable();
+
+                    // m
+                    if (!isAccessable) {
+                        song.url = Handler.convertPtoM(song.url);
+                        isAccessable = song.checkAccessable();
+                    }
+
+                    // p 320k
+                    if (!isAccessable && pJson.has("h")) {
+                        song = new Song(pJson.optJSONObject("h"));
+                        isAccessable = song.checkAccessable();
+                    }
+
+                    // m 320k
+                    if (!isAccessable && song.url != null) {
+                        song.url = Handler.convertPtoM(song.url);
+                        isAccessable = song.checkAccessable();
+                    }
+                }
+
+                if (!isAccessable) {
+                    if (oldSong.code == 404 || ("download".equals(from) && oldSong.code == -110)) {
+                        JSONObject thirdJson = Handler.getSongBy3rd(oldSong.id, expectBitrate);
+                        if (thirdJson != null) {
+                            song = new Song(thirdJson);
+                            song.checkAccessable(); // fix music size
+                        }
+                    } else {
+                        JSONObject enhanceJson = Handler.getSongByRemoteApiEnhance(oldSong.id, expectBitrate);
+                        if (enhanceJson != null) {
+                            song = new Song(enhanceJson);
+                        }
+                    }
+                }
+            }
+
+            if (song == null || song.url == null)
+                return false;
+
+
             originalSong.put("br", song.br)
                     .put("code", 200)
                     .put("gain", song.gain)
@@ -179,15 +206,15 @@ class Handler {
                     File file = Utility.findFirstFile(dir, start, end);
                     Utility.deleteFile(file);
                 }
-            } catch (Exception e) {
-                e.printStackTrace();
+            } catch (Throwable t) {
+                XposedBridge.log(t);
             }
+            return true;
 
-        } catch (JSONException e) {
+        } catch (Throwable t) {
+            XposedBridge.log(t);
             return false;
         }
-
-        return true;
     }
 
     private static JSONObject getSongByRemoteApi(final long songId, final int expectBitrate) {
@@ -200,6 +227,7 @@ class Handler {
             String raw = Http.post(XAPI + "song", map).getResponseText();
             return new JSONObject(raw).getJSONObject("data");
         } catch (Throwable t) {
+            XposedBridge.log(t);
             return null;
         }
     }
@@ -213,7 +241,7 @@ class Handler {
             String raw = Http.post(XAPI + "songx", map).getResponseText();
             return new JSONObject(raw).getJSONObject("data");
         } catch (Throwable t) {
-            t.printStackTrace();
+            XposedBridge.log(t);
             return null;
         }
     }
@@ -227,7 +255,7 @@ class Handler {
             String raw = Http.post(XAPI + "3rd/match", map).getResponseText();
             return new JSONObject(raw).getJSONObject("data");
         } catch (Throwable t) {
-            t.printStackTrace();
+            XposedBridge.log(t);
             return null;
         }
     }

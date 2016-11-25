@@ -13,6 +13,8 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 
+import de.robv.android.xposed.XposedBridge;
+
 @Deprecated()
 @SuppressWarnings({"unused", "WeakerAccess"})
 class HandlerDeprecated {
@@ -31,7 +33,8 @@ class HandlerDeprecated {
             String url = String.format("song/enhance/player/url?br=%s&ids=%s", expectBitrate, ids);
             String raw = CloudMusicPackage.HttpEapi.post(url, null);
             return new JSONObject(raw).getJSONArray("data").getJSONObject(0);
-        } catch (Exception e) {
+        } catch (Throwable t) {
+            XposedBridge.log(t);
             return null;
         }
     }
@@ -41,7 +44,8 @@ class HandlerDeprecated {
         try {
             String raw = CloudMusicPackage.HttpEapi.post(url, null);
             return new JSONObject(raw).getJSONObject("data");
-        } catch (Exception e) {
+        } catch (Throwable t) {
+            XposedBridge.log(t);
             return null;
         }
     }
@@ -51,7 +55,8 @@ class HandlerDeprecated {
         songIds.add(songId);
         try {
             return getSongByDetailApi(songIds, expectBitrate)[0];
-        } catch (Exception e) {
+        } catch (Throwable t) {
+            XposedBridge.log(t);
             return null;
         }
     }

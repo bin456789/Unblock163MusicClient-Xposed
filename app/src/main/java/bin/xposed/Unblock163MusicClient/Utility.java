@@ -6,11 +6,13 @@ import android.content.res.Resources;
 import android.text.TextUtils;
 
 import org.apache.http.cookie.Cookie;
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 import org.xbill.DNS.Lookup;
 import org.xbill.DNS.Record;
 import org.xbill.DNS.SimpleResolver;
+import org.xbill.DNS.TextParseException;
 import org.xbill.DNS.Type;
 
 import java.io.BufferedReader;
@@ -23,11 +25,14 @@ import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.net.URLEncoder;
+import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+
+import de.robv.android.xposed.XposedBridge;
 
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
@@ -104,23 +109,19 @@ class Utility {
         return result.toString();
     }
 
-    static String getIpByHost(String domain) {
-        try {
-            if (cnDnsResolver == null)
-                cnDnsResolver = new SimpleResolver(Settings.getDnsServer());
+    static String getIpByHost(String domain) throws UnknownHostException, TextParseException {
+        if (cnDnsResolver == null)
+            cnDnsResolver = new SimpleResolver(Settings.getDnsServer());
 
-            // caches mechanism built-in, just look it up
-            Lookup lookup = new Lookup(domain, Type.A);
-            lookup.setResolver(cnDnsResolver);
-            Record[] records = lookup.run();
-            if (lookup.getResult() == Lookup.SUCCESSFUL) {
-                // already random, just pick index 0
-                return records[0].rdataToString();
-            }
-            return null;
-        } catch (Exception e) {
-            e.printStackTrace();
-            return null;
+        // caches mechanism built-in, just look it up
+        Lookup lookup = new Lookup(domain, Type.A);
+        lookup.setResolver(cnDnsResolver);
+        Record[] records = lookup.run();
+        if (lookup.getResult() == Lookup.SUCCESSFUL) {
+            // already random, just pick index 0
+            return records[0].rdataToString();
+        } else {
+            throw new RuntimeException("No IP found");
         }
     }
 
@@ -161,10 +162,11 @@ class Utility {
     }
 
 
-    static String readFile(File file) {
+    static String readFile(File file) throws IOException {
         if (file.exists() && file.isFile() && file.canRead()) {
             StringBuilder sb = new StringBuilder();
             BufferedReader input = null;
+            IOException exception = null;
             try {
                 input = new BufferedReader(new FileReader(file));
                 String line;
@@ -176,33 +178,27 @@ class Utility {
                     else
                         sb.append(System.getProperty("line.separator"));
                 }
-            } catch (IOException e) {
-                e.printStackTrace();
             } finally {
                 try {
-                    if (input != null)
+                    if (input != null) {
                         input.close();
+                    }
                 } catch (IOException e) {
-                    e.printStackTrace();
+                    XposedBridge.log(e);
                 }
             }
             return sb.toString();
-        } else
-            return null;
+        } else {
+            throw new RuntimeException("file not exists or file can't read");
+        }
     }
 
-    static boolean writeFile(File file, String string) {
-        try {
-            FileWriter fileWriter;
-            fileWriter = new FileWriter(file);
-            fileWriter.write(string);
-            fileWriter.flush();
-            fileWriter.close();
-            return true;
-        } catch (IOException e) {
-            e.printStackTrace();
-            return false;
-        }
+    static void writeFile(File file, String string) throws IOException {
+        FileWriter fileWriter;
+        fileWriter = new FileWriter(file);
+        fileWriter.write(string);
+        fileWriter.flush();
+        fileWriter.close();
     }
 
     static File findFirstFile(String dirStr, final String start, final String end) {
@@ -219,8 +215,8 @@ class Utility {
             @Override
             public boolean accept(File file, String s) {
                 if (find < limit
-                        && (start == null || s.startsWith(start))
-                        && (end == null || s.endsWith(end))) {
+                        && (TextUtils.isEmpty(start) || s.startsWith(start))
+                        && (TextUtils.isEmpty(end) || s.endsWith(end))) {
                     find++;
                     return true;
                 } else
@@ -252,13 +248,25 @@ class Utility {
                 break;
 
             String s = f.getType().getName();
-            if ((exact == null || s.equals(exact))
-                    && (start == null || s.startsWith(start))
-                    && (end == null || s.endsWith(end)))
+            if ((TextUtils.isEmpty(exact) || s.equals(exact))
+                    && (TextUtils.isEmpty(start) || s.startsWith(start))
+                    && (TextUtils.isEmpty(end) || s.endsWith(end)))
                 returnFs.add(f);
 
         }
         return returnFs.toArray(new Field[returnFs.size()]);
     }
 
+    static boolean isJSONValid(String test) {
+        try {
+            new JSONObject(test);
+        } catch (Exception e) {
+            try {
+                new JSONArray(test);
+            } catch (Exception ez) {
+                return false;
+            }
+        }
+        return true;
+    }
 }

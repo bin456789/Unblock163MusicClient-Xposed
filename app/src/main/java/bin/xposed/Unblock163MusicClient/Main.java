@@ -5,21 +5,20 @@ import android.app.Application;
 import android.content.Context;
 import android.content.res.Resources;
 import android.text.SpannableString;
+import android.text.TextUtils;
 import android.text.style.TextAppearanceSpan;
 import android.view.View;
 
-import java.io.File;
+import org.xbill.DNS.TextParseException;
+
 import java.net.URI;
 import java.net.URISyntaxException;
-import java.util.ArrayList;
-import java.util.Collections;
-import java.util.List;
+import java.net.UnknownHostException;
 import java.util.Map;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import bin.xposed.Unblock163MusicClient.ui.SettingsActivity;
-import dalvik.system.DexFile;
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
@@ -53,46 +52,20 @@ public class Main implements IXposedHookLoadPackage {
 
 
         if (lpparam.packageName.equals(CloudMusicPackage.PACKAGE_NAME)) {
-            if (false) {
-                // 另一种方法，但一直占用内存，所以不用
-                final List<String> allClasses = new ArrayList<>();
-                findAndHookMethod(findClass("android.support.multidex.MultiDex", lpparam.classLoader),
-                        "install", Context.class, new XC_MethodHook() {
-                            @Override
-                            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                                Application app = (Application) param.args[0];
-                                DexFile dexfile = new DexFile(app.getApplicationInfo().sourceDir);
-                                allClasses.addAll(Collections.list(dexfile.entries()));
-                                CloudMusicPackage.version = app.getPackageManager().getPackageInfo(lpparam.packageName, 0).versionName;
-                            }
-                        });
-
-                findAndHookMethod(findClass("android.support.multidex.MultiDex", lpparam.classLoader),
-                        "installSecondaryDexes", ClassLoader.class, File.class, List.class, new XC_MethodHook() {
-                            @Override
-                            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                                @SuppressWarnings("unchecked")
-                                List<File> list = (List<File>) param.args[2];
-                                for (File file : list) {
-                                    String path = file.getAbsolutePath();
-                                    DexFile dexfile = DexFile.loadDex(path, path + ".tmp", Context.MODE_PRIVATE);
-                                    allClasses.addAll(Collections.list(dexfile.entries()));
-                                }
-                            }
-                        });
-            }
-
             findAndHookMethod(Application.class, "attach", Context.class, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                     CloudMusicPackage.init(lpparam, (Application) param.thisObject);
 
                     // main
-                    findAndHookMethod(CloudMusicPackage.HttpEapi.CLASS, "a", String.class, new XC_MethodHook() {
+                    findAndHookMethod(CloudMusicPackage.HttpEapi.getClazz(), "a", String.class, new XC_MethodHook() {
                         @Override
                         protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                            String path = CloudMusicPackage.HttpEapi.getPath(param.thisObject);
                             String original = (String) param.getResult();
+                            if (TextUtils.isEmpty(original))
+                                return;
+
+                            String path = CloudMusicPackage.HttpEapi.getPath(param.thisObject);
                             String modified = null;
                             if (path.startsWith("batch")
                                     || path.startsWith("album/privilege")
@@ -125,6 +98,9 @@ public class Main implements IXposedHookLoadPackage {
                             } else if (path.startsWith("song/like")) {
                                 modified = Handler.modifyLike(original, param.thisObject);
 
+                            } else if (path.startsWith("cloud/pub/v2")) {
+                                modified = Handler.modifyPub(original, param.thisObject);
+
                             }
 
                             if (modified != null) {
@@ -136,20 +112,20 @@ public class Main implements IXposedHookLoadPackage {
 
                     // save latest post data
                     try {
-                        findAndHookConstructor(CloudMusicPackage.HttpEapi.CLASS, String.class, Map.class, String.class, boolean.class, new XC_MethodHook() {
+                        findAndHookConstructor(CloudMusicPackage.HttpEapi.getClazz(), String.class, Map.class, String.class, boolean.class, new XC_MethodHook() {
                             @Override
                             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                                 CloudMusicPackage.HttpEapi.setArgs(param.thisObject, param.args);
                             }
                         });
                     } catch (Throwable t) {
-                        t.printStackTrace();
+                        XposedBridge.log(t);
                     }
 
 
                     // calc md5
                     try {
-                        findAndHookMethod(CloudMusicPackage.NeteaseMusicUtils.CLASS, "a", String.class, new XC_MethodHook() {
+                        findAndHookMethod(CloudMusicPackage.NeteaseMusicUtils.getClazz(), "a", String.class, new XC_MethodHook() {
                             Pattern REX_MD5 = Pattern.compile("[a-f0-9]{32}", Pattern.CASE_INSENSITIVE);
 
                             @Override
@@ -161,7 +137,7 @@ public class Main implements IXposedHookLoadPackage {
                             }
                         });
                     } catch (Throwable t) {
-                        t.printStackTrace();
+                        XposedBridge.log(t);
                     }
 
                     // dislike confirm
@@ -174,27 +150,29 @@ public class Main implements IXposedHookLoadPackage {
 
                                 @Override
                                 protected void beforeHookedMethod(final MethodHookParam param) throws Throwable {
-                                    Activity playerActivity = (Activity) getObjectField(param.thisObject, "a");
-                                    Object musicInfo = CloudMusicPackage.PlayerActivity.getMusicInfo(playerActivity);
-                                    long musicId = (long) callMethod(musicInfo, "getMatchedMusicId");
-                                    boolean isStarred = (boolean) callStaticMethod(CloudMusicPackage.MusicInfo.CLASS, "isStarred", musicId);
-                                    if (isStarred) {
-                                        callStaticMethod(CloudMusicPackage.UIAA.CLASS, "a", playerActivity, question, confirm, new View.OnClickListener() {
-                                            @Override
-                                            public void onClick(View v) {
-                                                try {
-                                                    XposedBridge.invokeOriginalMethod(param.method, param.thisObject, param.args);
-                                                } catch (Exception e) {
-                                                    e.printStackTrace();
+                                    Activity currentActivity = (Activity) getObjectField(param.thisObject, "a");
+                                    if (CloudMusicPackage.PlayerActivity.getClazz().isInstance(currentActivity)) {
+                                        Object musicInfo = CloudMusicPackage.PlayerActivity.getMusicInfo(currentActivity);
+                                        long musicId = CloudMusicPackage.MusicInfo.getMatchedMusicId(musicInfo);
+                                        boolean isStarred = CloudMusicPackage.MusicInfo.isStarred(musicId);
+                                        if (isStarred) {
+                                            callStaticMethod(CloudMusicPackage.UIAA.getClazz(), "a", currentActivity, question, confirm, new View.OnClickListener() {
+                                                @Override
+                                                public void onClick(View v) {
+                                                    try {
+                                                        XposedBridge.invokeOriginalMethod(param.method, param.thisObject, param.args);
+                                                    } catch (Throwable t) {
+                                                        XposedBridge.log(t);
+                                                    }
                                                 }
-                                            }
-                                        });
-                                        param.setResult(null);
+                                            });
+                                            param.setResult(null);
+                                        }
                                     }
                                 }
                             });
                         } catch (Throwable t) {
-                            t.printStackTrace();
+                            XposedBridge.log(t);
                         }
                     }
 
@@ -203,26 +181,28 @@ public class Main implements IXposedHookLoadPackage {
                         hookMethod(CloudMusicPackage.UIAA.getQualityBoxMethod(), new XC_MethodHook() {
                             @Override
                             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                                Object playerActivity = param.args[0];
-                                Object musicInfo = CloudMusicPackage.PlayerActivity.getMusicInfo(playerActivity);
-                                if (!(boolean) callMethod(musicInfo, "hasCopyRight")) { // 需要打开滑稽模式，即不替换st
-                                    SpannableString ssOld = (SpannableString) param.args[1];
-                                    SpannableString ssNew = new SpannableString(ssOld.toString().replace("付费独享", "下架歌曲"));
-                                    TextAppearanceSpan[] textAppearanceSpen = ssOld.getSpans(0, ssOld.length(), TextAppearanceSpan.class);
-                                    for (TextAppearanceSpan span : textAppearanceSpen) {
-                                        ssNew.setSpan(span, ssOld.getSpanStart(span), ssOld.getSpanEnd(span), ssOld.getSpanFlags(span));
+                                Object currentActivity = param.args[0];
+                                if (CloudMusicPackage.PlayerActivity.getClazz().isInstance(currentActivity)) {
+                                    Object musicInfo = CloudMusicPackage.PlayerActivity.getMusicInfo(currentActivity);
+                                    if (!(boolean) callMethod(musicInfo, "hasCopyRight")) {
+                                        SpannableString ssOld = (SpannableString) param.args[1];
+                                        SpannableString ssNew = new SpannableString(ssOld.toString().replace("付费独享", "下架歌曲"));
+                                        TextAppearanceSpan[] textAppearanceSpen = ssOld.getSpans(0, ssOld.length(), TextAppearanceSpan.class);
+                                        for (TextAppearanceSpan span : textAppearanceSpen) {
+                                            ssNew.setSpan(span, ssOld.getSpanStart(span), ssOld.getSpanEnd(span), ssOld.getSpanFlags(span));
+                                        }
+                                        param.args[1] = ssNew;
                                     }
-                                    param.args[1] = ssNew;
                                 }
                             }
                         });
                     } catch (Throwable t) {
-                        t.printStackTrace();
+                        XposedBridge.log(t);
                     }
 
                     // 3rd party
                     try {
-                        hookAllMethods(findClass(CloudMusicPackage.HttpEapi.CLASS.getPackage().getName() + ".a$1", lpparam.classLoader),
+                        hookAllMethods(findClass(CloudMusicPackage.HttpEapi.getClazz().getPackage().getName() + ".a$1", lpparam.classLoader),
                                 "determineRoute", new XC_MethodHook() {
                                     final Class HttpHost = findMamClass(org.apache.http.HttpHost.class);
                                     final Class HttpRequestBase = findMamClass(org.apache.http.client.methods.HttpRequestBase.class);
@@ -279,31 +259,38 @@ public class Main implements IXposedHookLoadPackage {
                                     }
                                 });
                     } catch (Throwable t) {
-                        t.printStackTrace();
+                        XposedBridge.log(t);
                     }
 
                     // 3rd party source tips
                     XC_MethodHook set3rdStr = new XC_MethodHook() {
                         @Override
-                        protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                        protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                             Object musicInfo = param.thisObject;
                             String s = CloudMusicPackage.MusicInfo.get3rdSourceString(musicInfo);
                             if (s != null) {
-                                param.setResult(CloudMusicPackage.MusicInfo.get3rdSourceString(musicInfo));
+                                String original = (String) param.getResult();
+                                String modified = TextUtils.isEmpty(original) ? s : original + s;
+                                param.setResult(modified);
                             }
                         }
                     };
 
 
                     try {
-                        // getThirdTitle 3.4+ 才有
-                        findAndHookMethod(CloudMusicPackage.MusicInfo.CLASS, "getThirdTitle", boolean.class, set3rdStr);
-                    } catch (Throwable ignored) {
+                        findAndHookMethod(CloudMusicPackage.MusicInfo.getClazz(), "getAppendCopyRight", set3rdStr);
+                    } catch (Throwable t) {
+                        XposedBridge.log(t);
                     }
-                    try {
-                        findAndHookMethod(CloudMusicPackage.MusicInfo.CLASS, "getAppendCopyRight", set3rdStr);
-                    } catch (Throwable ignored) {
+
+                    if (CloudMusicPackage.version.compareTo("3.4") >= 0) {
+                        try {
+                            findAndHookMethod(CloudMusicPackage.MusicInfo.getClazz(), "getThirdTitle", boolean.class, set3rdStr);
+                        } catch (Throwable t) {
+                            XposedBridge.log(t);
+                        }
                     }
+
 
                     // oversea mode
                     if (Settings.isOverseaModeEnabled()) {
@@ -314,7 +301,7 @@ public class Main implements IXposedHookLoadPackage {
 
                             findAndHookMethod(AbstractHttpClient, "execute", HttpUriRequest, new XC_MethodHook() {
                                 @Override
-                                protected void beforeHookedMethod(MethodHookParam param) throws URISyntaxException {
+                                protected void beforeHookedMethod(MethodHookParam param) throws URISyntaxException, TextParseException, UnknownHostException {
                                     if (HttpRequestBase.isInstance(param.args[0])) {
                                         Object httpRequestBase = param.args[0];
                                         URI uri = (URI) callMethod(httpRequestBase, "getURI");
@@ -322,17 +309,15 @@ public class Main implements IXposedHookLoadPackage {
                                         // solve server ip point to 1.1.1.1
                                         if ("m2.music.126.net".equals(host)) {
                                             String ip = Utility.getIpByHost(host);
-                                            if (ip != null) {
-                                                URI newUrl = new URI(uri.getScheme(), uri.getUserInfo(), ip, uri.getPort(), uri.getRawPath(), uri.getRawQuery(), uri.getRawFragment());
-                                                callMethod(httpRequestBase, "setURI", newUrl);
-                                                callMethod(httpRequestBase, "setHeader", "Host", host);
-                                            }
+                                            URI newUrl = new URI(uri.getScheme(), uri.getUserInfo(), ip, uri.getPort(), uri.getRawPath(), uri.getRawQuery(), uri.getRawFragment());
+                                            callMethod(httpRequestBase, "setURI", newUrl);
+                                            callMethod(httpRequestBase, "setHeader", "Host", host);
                                         }
                                     }
                                 }
                             });
                         } catch (Throwable t) {
-                            t.printStackTrace();
+                            XposedBridge.log(t);
                         }
                     }
                 }
