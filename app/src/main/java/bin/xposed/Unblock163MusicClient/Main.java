@@ -3,7 +3,6 @@ package bin.xposed.Unblock163MusicClient;
 import android.app.Activity;
 import android.app.Application;
 import android.content.Context;
-import android.content.res.Resources;
 import android.text.SpannableString;
 import android.text.TextUtils;
 import android.text.style.TextAppearanceSpan;
@@ -65,7 +64,7 @@ public class Main implements IXposedHookLoadPackage {
                             if (TextUtils.isEmpty(original))
                                 return;
 
-                            String path = CloudMusicPackage.HttpEapi.getPath(param.thisObject);
+                            String path = new CloudMusicPackage.HttpEapi(param.thisObject).getPath();
                             String modified = null;
                             if (path.startsWith("batch")
                                     || path.startsWith("album/privilege")
@@ -113,9 +112,12 @@ public class Main implements IXposedHookLoadPackage {
                     // save latest post data
                     try {
                         findAndHookConstructor(CloudMusicPackage.HttpEapi.getClazz(), String.class, Map.class, String.class, boolean.class, new XC_MethodHook() {
+                            @SuppressWarnings("unchecked")
                             @Override
                             protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                                CloudMusicPackage.HttpEapi.setArgs(param.thisObject, param.args);
+                                CloudMusicPackage.HttpEapi httpEapi = new CloudMusicPackage.HttpEapi(param.thisObject);
+                                httpEapi.setPath((String) param.args[0]);
+                                httpEapi.setRequestMap((Map<String, String>) param.args[1]);
                             }
                         });
                     } catch (Throwable t) {
@@ -144,19 +146,15 @@ public class Main implements IXposedHookLoadPackage {
                     if (Settings.isConfirmDislikeEnabled()) {
                         try {
                             hookMethod(CloudMusicPackage.PlayerActivity.getLikeBottomOnClickMethod(), new XC_MethodHook() {
-                                final Resources resources = Utility.getModuleResources();
-                                final String question = resources.getString(R.string.dislike_confirm_question);
-                                final String confirm = resources.getString(R.string.confirm);
-
                                 @Override
                                 protected void beforeHookedMethod(final MethodHookParam param) throws Throwable {
                                     Activity currentActivity = (Activity) getObjectField(param.thisObject, "a");
                                     if (CloudMusicPackage.PlayerActivity.getClazz().isInstance(currentActivity)) {
-                                        Object musicInfo = CloudMusicPackage.PlayerActivity.getMusicInfo(currentActivity);
-                                        long musicId = CloudMusicPackage.MusicInfo.getMatchedMusicId(musicInfo);
+                                        Object musicInfo = new CloudMusicPackage.PlayerActivity(currentActivity).getMusicInfo();
+                                        long musicId = new CloudMusicPackage.MusicInfo(musicInfo).getMatchedMusicId();
                                         boolean isStarred = CloudMusicPackage.MusicInfo.isStarred(musicId);
                                         if (isStarred) {
-                                            callStaticMethod(CloudMusicPackage.UIAA.getClazz(), "a", currentActivity, question, confirm, new View.OnClickListener() {
+                                            callStaticMethod(CloudMusicPackage.UIAA.getClazz(), "a", currentActivity, "确定取消红心？", "确定", new View.OnClickListener() {
                                                 @Override
                                                 public void onClick(View v) {
                                                     try {
@@ -183,7 +181,7 @@ public class Main implements IXposedHookLoadPackage {
                             protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                                 Object currentActivity = param.args[0];
                                 if (CloudMusicPackage.PlayerActivity.getClazz().isInstance(currentActivity)) {
-                                    Object musicInfo = CloudMusicPackage.PlayerActivity.getMusicInfo(currentActivity);
+                                    Object musicInfo = new CloudMusicPackage.PlayerActivity(currentActivity).getMusicInfo();
                                     if (!(boolean) callMethod(musicInfo, "hasCopyRight")) {
                                         SpannableString ssOld = (SpannableString) param.args[1];
                                         SpannableString ssNew = new SpannableString(ssOld.toString().replace("付费独享", "下架歌曲"));
@@ -235,7 +233,7 @@ public class Main implements IXposedHookLoadPackage {
 
                                                 // 避免开通联通流量包后听不了
                                                 if (callMethod(resultHttpRoute, "getProxyHost") != null) {
-                                                    if (host.endsWith("xiami.com")) {
+                                                    if (host.endsWith("xiami.com") || (host.endsWith("alicdn.com"))) {
                                                         callMethod(originalHttpRequest, "setHeader", "Authorization", "Basic MzAwMDAwNDU5MDpGRDYzQTdBNTM0NUMxMzFF");
                                                     } else if (host.endsWith("qq.com")) {
                                                         callMethod(originalHttpRequest, "removeHeaders", "Authorization");
@@ -267,10 +265,14 @@ public class Main implements IXposedHookLoadPackage {
                         @Override
                         protected void afterHookedMethod(MethodHookParam param) throws Throwable {
                             Object musicInfo = param.thisObject;
-                            String s = CloudMusicPackage.MusicInfo.get3rdSourceString(musicInfo);
-                            if (s != null) {
+                            String thirdTitle = new CloudMusicPackage.MusicInfo(musicInfo).get3rdSourceString();
+                            if (thirdTitle != null) {
                                 String original = (String) param.getResult();
-                                String modified = TextUtils.isEmpty(original) ? s : original + s;
+                                boolean needToAppendSpace = "getThirdTitle".equals(param.method.getName());
+                                if (needToAppendSpace) {
+                                    thirdTitle = " " + thirdTitle;
+                                }
+                                String modified = TextUtils.isEmpty(original) ? thirdTitle : original + thirdTitle;
                                 param.setResult(modified);
                             }
                         }

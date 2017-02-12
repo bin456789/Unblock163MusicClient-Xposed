@@ -40,7 +40,7 @@ class Handler {
 
     static String modifyPlayerOrDownloadApi(String originalContent, Object eapiObj, String from) throws JSONException, IllegalAccessException {
         JSONObject originalJson = new JSONObject(originalContent);
-        String path = CloudMusicPackage.HttpEapi.getPath(eapiObj);
+        String path = new CloudMusicPackage.HttpEapi(eapiObj).getPath();
         int expectBitrate = Integer.parseInt(Uri.parse(path).getQueryParameter("br"));
 
         boolean isModified = false;
@@ -69,7 +69,7 @@ class Handler {
         // 重复收藏 502
         if (code != 200 && code != 502) {
             @SuppressWarnings({"unchecked"})
-            Map<String, String> requestMap = CloudMusicPackage.HttpEapi.getRequestMap(eapiObj);
+            Map<String, String> requestMap = new CloudMusicPackage.HttpEapi(eapiObj).getRequestMap();
             String raw = Http.post(XAPI + "manipulate", requestMap).getResponseText();
             if (Utility.isJSONValid(raw)) {
                 return raw;
@@ -85,7 +85,7 @@ class Handler {
             if (likePlaylistId == -1) {
                 CloudMusicPackage.CAC.refreshMyPlaylist();
             }
-            String likeString = CloudMusicPackage.HttpEapi.getPath(eapiObj);
+            String likeString = new CloudMusicPackage.HttpEapi(eapiObj).getPath();
             String query = URI.create(likeString).getQuery();
             Map<String, String> dataMap = Utility.queryToMap(query);
             dataMap.put("playlistId", String.valueOf(likePlaylistId));
@@ -100,7 +100,7 @@ class Handler {
 
     static void cacheLikePlaylistId(String originalContent, Object eapiObj) throws JSONException {
         String api = "/api/user/playlist";
-        if (CloudMusicPackage.HttpEapi.getRequestMap(eapiObj).containsKey(api)) {
+        if (new CloudMusicPackage.HttpEapi(eapiObj).getRequestMap().containsKey(api)) {
             likePlaylistId = new JSONObject(originalContent)
                     .getJSONObject(api)
                     .getJSONArray("playlist")
@@ -113,7 +113,7 @@ class Handler {
         int code = originalJson.getInt("code");
         if (code != 200) {
             @SuppressWarnings({"unchecked"})
-            Map<String, String> requestMap = CloudMusicPackage.HttpEapi.getRequestMap(eapiObj);
+            Map<String, String> requestMap = new CloudMusicPackage.HttpEapi(eapiObj).getRequestMap();
             String raw = Http.post(XAPI + "pub", requestMap).getResponseText();
             if (Utility.isJSONValid(raw)) {
                 return raw;
@@ -127,44 +127,43 @@ class Handler {
         // 异常在这方法里处理，防止影响下一曲
         try {
             Song oldSong = new Song(originalSong);
-            Song song = null;
-
             if (oldSong.uf != null)
                 return false;
 
+            Song song = null;
             if (expectBitrate > 320000)
                 expectBitrate = 320000;
 
             if ((oldSong.fee != 0 && oldSong.payed == 0 && oldSong.br < expectBitrate)
                     || oldSong.url == null) {
-                boolean isAccessable = false;
+                boolean isAccessible = false;
 
                 // p
                 JSONObject pJson = Handler.getSongByRemoteApi(oldSong.id, expectBitrate);
                 if (pJson != null) {
                     song = new Song(pJson);
-                    isAccessable = song.checkAccessable();
+                    isAccessible = song.checkAccessable();
 
                     // m
-                    if (!isAccessable) {
+                    if (!isAccessible) {
                         song.url = Handler.convertPtoM(song.url);
-                        isAccessable = song.checkAccessable();
+                        isAccessible = song.checkAccessable();
                     }
 
                     // p 320k
-                    if (!isAccessable && pJson.has("h")) {
+                    if (!isAccessible && pJson.has("h")) {
                         song = new Song(pJson.optJSONObject("h"));
-                        isAccessable = song.checkAccessable();
+                        isAccessible = song.checkAccessable();
                     }
 
                     // m 320k
-                    if (!isAccessable && song.url != null) {
+                    if (!isAccessible && song.url != null) {
                         song.url = Handler.convertPtoM(song.url);
-                        isAccessable = song.checkAccessable();
+                        isAccessible = song.checkAccessable();
                     }
                 }
 
-                if (!isAccessable) {
+                if (!isAccessible) {
                     if (oldSong.code == 404 || ("download".equals(from) && oldSong.code == -110)) {
                         JSONObject thirdJson = Handler.getSongBy3rd(oldSong.id, expectBitrate);
                         if (thirdJson != null) {
@@ -194,13 +193,13 @@ class Handler {
 
             try {
                 if (song.isMatchedSong()) {
-                    String dir = CloudMusicPackage.NeteaseMusicApplication.getMusicCacheDir();
+                    File dir = CloudMusicPackage.NeteaseMusicApplication.getMusicCacheDir();
                     String fileName = String.format("%s-%s-%s.%s.xp!", song.id, song.br, song.md5, song.type);
                     File file = new File(dir, fileName);
                     String str = song.getMatchedJson().toString();
                     Utility.writeFile(file, str);
                 } else {
-                    String dir = CloudMusicPackage.NeteaseMusicApplication.getMusicCacheDir();
+                    File dir = CloudMusicPackage.NeteaseMusicApplication.getMusicCacheDir();
                     String start = String.format("%s-%s", song.id, song.br);
                     String end = ".xp!";
                     File file = Utility.findFirstFile(dir, start, end);

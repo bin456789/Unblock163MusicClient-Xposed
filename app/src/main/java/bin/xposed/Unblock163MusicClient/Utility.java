@@ -194,35 +194,38 @@ class Utility {
     }
 
     static void writeFile(File file, String string) throws IOException {
-        FileWriter fileWriter;
-        fileWriter = new FileWriter(file);
+        file.getParentFile().mkdirs();
+
+        FileWriter fileWriter = new FileWriter(file);
         fileWriter.write(string);
         fileWriter.flush();
         fileWriter.close();
     }
 
-    static File findFirstFile(String dirStr, final String start, final String end) {
-        File[] fs = findFiles(dirStr, start, end, 1);
-        return fs.length > 0 ? fs[0] : null;
+    static File findFirstFile(File dir, final String start, final String end) {
+        File[] fs = findFiles(dir, start, end, 1);
+        return fs != null && fs.length > 0 ? fs[0] : null;
     }
 
-    static File[] findFiles(String dirStr, final String start, final String end, final int limit) {
-        File dir = new File(dirStr);
+    static File[] findFiles(File dir, final String start, final String end, final int limit) {
+        if (dir != null && dir.exists() && dir.isDirectory())
+            return dir.listFiles(new FilenameFilter() {
+                int find = 0;
 
-        return dir.listFiles(new FilenameFilter() {
-            int find = 0;
-
-            @Override
-            public boolean accept(File file, String s) {
-                if (find < limit
-                        && (TextUtils.isEmpty(start) || s.startsWith(start))
-                        && (TextUtils.isEmpty(end) || s.endsWith(end))) {
-                    find++;
-                    return true;
-                } else
-                    return false;
-            }
-        });
+                @Override
+                public boolean accept(File file, String s) {
+                    if (find < limit
+                            && (TextUtils.isEmpty(start) || s.startsWith(start))
+                            && (TextUtils.isEmpty(end) || s.endsWith(end))) {
+                        find++;
+                        return true;
+                    } else
+                        return false;
+                }
+            });
+        else {
+            return null;
+        }
     }
 
     static boolean deleteFile(File file) {

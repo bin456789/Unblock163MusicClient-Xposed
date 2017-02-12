@@ -1,21 +1,21 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <string name="app_name">Volume Booster</string>
-    <string name="xposed_description">Just for test</string>
-    <string name="ok">OK</string>
-    <string name="cancel">Cancel</string>
+    <string name="app_name">音量增强器</string>
+    <string name="xposed_description">仅供测试</string>
+    <string name="ok">确定</string>
+    <string name="cancel">取消</string>
 
-    <string name="confirm">Confirm</string>
-    <string name="source">Source</string>
+    <string name="confirm">确定</string>
+    <string name="source">来自</string>
 
-    <string name="hint_hide_icon">Because rarely need to change the configuration, I\'m going to disappear from your launcher.\n\nFind me in \"Xposed Installer\" next time.</string>
-    <string name="hint_reboot_setting_changed">Reboot or kill music app process to take effect</string>
-    <string name="hint_reboot_not_active">Module not activated. Please enable this module and reboot your phone.</string>
+    <string name="hint_hide_icon">由于很少需要更改配置，本模块图标将从桌面上移除。\n\n下次可到 Xposed Installer 打开。</string>
+    <string name="hint_reboot_setting_changed">重启或结束音乐软件进程后生效</string>
+    <string name="hint_reboot_not_active">模块未激活，请先激活模块并重启手机</string>
 
-    <string name="oversea_mode_title">Oversea mode</string>
-    <string name="oversea_mode_description">Don\'t enable if you\'re in the wall. Otherwise streaming will get slow.</string>
+    <string name="oversea_mode_title">海外模式</string>
+    <string name="oversea_mode_description">国内用户切勿勾选，否则会降低缓冲速度</string>
 
-    <string name="dislike_confirm_title">Confirm before dislike a song</string>
-    <string name="dislike_confirm_question">Confirm dislike?</string>
+    <string name="dislike_confirm_title">取消红心前确认</string>
+    <string name="dislike_confirm_question">确定取消红心？</string>
 
 </resources>

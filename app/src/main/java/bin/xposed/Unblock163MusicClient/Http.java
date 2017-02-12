@@ -6,10 +6,13 @@ import java.util.Map;
 class Http extends CloudMusicPackage.HttpBase {
 
     private Http(String method, String urlString, Map<String, String> postData, Map<String, String> additionalHeaders) throws Throwable {
+        super(method, urlString, postData);
+        setAdditionHeader(additionalHeaders);
+
         int retryCount = 3;
         while (true) {
             try {
-                doRequest(method, urlString, postData, additionalHeaders);
+                startRequest();
                 break;
             } catch (Throwable t) {
                 retryCount--;
