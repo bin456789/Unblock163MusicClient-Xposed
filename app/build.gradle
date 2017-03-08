@@ -23,7 +23,7 @@ android {
         applicationId "bin.xposed.Unblock163MusicClient"
         minSdkVersion 9
         targetSdkVersion 25
-        versionCode 15
+        versionCode 16
         versionName = "0.0.${versionCode}"
         archivesBaseName = "${applicationId}-${versionName}"
     }
@@ -44,5 +44,5 @@ android {
 dependencies {
     provided 'de.robv.android.xposed:api:53'
     provided 'de.robv.android.xposed:api:53:sources'
-    compile 'dnsjava:dnsjava:2.1.7'
+    compile 'dnsjava:dnsjava:2.1.8'
 }

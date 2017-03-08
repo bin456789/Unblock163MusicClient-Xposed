@@ -2,10 +2,8 @@
 
 Xposed version of EraserKing's [Unblock163MusicClient](https://github.com/EraserKing/Unblock163MusicClient).
 
-Compatible with the 3.x app.
+Compatible with app v3/v4.
 
-## Downlad
-No apks here. Just build it yourself.
 
 ## Thanks
 
