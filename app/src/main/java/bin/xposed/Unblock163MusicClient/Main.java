@@ -10,6 +10,7 @@ import android.view.View;
 
 import org.xbill.DNS.TextParseException;
 
+import java.io.File;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
@@ -125,19 +126,28 @@ public class Main implements IXposedHookLoadPackage {
                     }
 
 
-                    // calc md5
-                    try {
-                        findAndHookMethod(CloudMusicPackage.NeteaseMusicUtils.getClazz(), "a", String.class, new XC_MethodHook() {
-                            Pattern REX_MD5 = Pattern.compile("[a-f0-9]{32}", Pattern.CASE_INSENSITIVE);
+                    // replace md5
+                    XC_MethodHook replaceMd5 = new XC_MethodHook() {
+                        final Pattern REX_MD5 = Pattern.compile("[a-f0-9]{32}", Pattern.CASE_INSENSITIVE);
 
-                            @Override
-                            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
-                                String path = (String) param.args[0];
-                                Matcher matcher = REX_MD5.matcher(path);
-                                if (matcher.find())
-                                    param.setResult(matcher.group());
-                            }
-                        });
+                        @Override
+                        protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                            String path = param.args[0] instanceof File
+                                    ? ((File) param.args[0]).getPath()
+                                    : param.args[0].toString();
+
+                            Matcher matcher = REX_MD5.matcher(path);
+                            if (matcher.find())
+                                param.setResult(matcher.group());
+                        }
+                    };
+
+                    try {
+                        if (CloudMusicPackage.version.startsWith("3")) {
+                            findAndHookMethod(CloudMusicPackage.NeteaseMusicUtils.getClazz(), "a", String.class, replaceMd5);
+                        } else {
+                            hookMethod(CloudMusicPackage.Transfer.getCalcMd5Method(), replaceMd5);
+                        }
                     } catch (Throwable t) {
                         XposedBridge.log(t);
                     }

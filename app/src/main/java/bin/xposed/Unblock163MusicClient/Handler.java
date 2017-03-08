@@ -38,10 +38,21 @@ class Handler {
         return originalContent;
     }
 
-    static String modifyPlayerOrDownloadApi(String originalContent, Object eapiObj, String from) throws JSONException, IllegalAccessException {
+    static String modifyPlayerOrDownloadApi(String originalContent, Object eapiObj, String from) throws JSONException {
         JSONObject originalJson = new JSONObject(originalContent);
         String path = new CloudMusicPackage.HttpEapi(eapiObj).getPath();
-        int expectBitrate = Integer.parseInt(Uri.parse(path).getQueryParameter("br"));
+
+        int expectBitrate;
+        try {
+            expectBitrate = Integer.parseInt(Uri.parse(path).getQueryParameter("br"));
+        } catch (Throwable t) {
+            try {
+                expectBitrate = Integer.parseInt(new CloudMusicPackage.HttpEapi(eapiObj).getRequestMap().get("br"));
+            } catch (Throwable th) {
+                expectBitrate = 320000;
+            }
+        }
+
 
         boolean isModified = false;
         Object data = originalJson.get("data");
