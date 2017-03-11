@@ -5,7 +5,6 @@ import android.app.Application;
 import android.content.Context;
 import android.text.SpannableString;
 import android.text.TextUtils;
-import android.text.style.TextAppearanceSpan;
 import android.view.View;
 
 import org.xbill.DNS.TextParseException;
@@ -195,8 +194,8 @@ public class Main implements IXposedHookLoadPackage {
                                     if (!(boolean) callMethod(musicInfo, "hasCopyRight")) {
                                         SpannableString ssOld = (SpannableString) param.args[1];
                                         SpannableString ssNew = new SpannableString(ssOld.toString().replace("付费独享", "下架歌曲"));
-                                        TextAppearanceSpan[] textAppearanceSpen = ssOld.getSpans(0, ssOld.length(), TextAppearanceSpan.class);
-                                        for (TextAppearanceSpan span : textAppearanceSpen) {
+                                        Object[] spans = ssOld.getSpans(0, ssOld.length(), Object.class);
+                                        for (Object span : spans) {
                                             ssNew.setSpan(span, ssOld.getSpanStart(span), ssOld.getSpanEnd(span), ssOld.getSpanFlags(span));
                                         }
                                         param.args[1] = ssNew;
