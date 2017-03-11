@@ -154,7 +154,7 @@ public class Main implements IXposedHookLoadPackage {
                     // dislike confirm
                     if (Settings.isConfirmDislikeEnabled()) {
                         try {
-                            hookMethod(CloudMusicPackage.PlayerActivity.getLikeBottomOnClickMethod(), new XC_MethodHook() {
+                            hookMethod(CloudMusicPackage.PlayerActivity.getLikeButtonOnClickMethod(), new XC_MethodHook() {
                                 @Override
                                 protected void beforeHookedMethod(final MethodHookParam param) throws Throwable {
                                     Activity currentActivity = (Activity) getObjectField(param.thisObject, "a");

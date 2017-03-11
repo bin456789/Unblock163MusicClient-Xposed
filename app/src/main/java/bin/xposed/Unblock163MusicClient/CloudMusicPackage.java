@@ -467,7 +467,7 @@ class CloudMusicPackage {
     static class PlayerActivity {
         private static Class clazz;
         private static Field f_musicInfo;
-        private static Method m_likeBottomOnClick;
+        private static Method m_likeButtonOnClick;
         private final Object playerActivity;
 
         PlayerActivity(Object playerActivity) {
@@ -484,8 +484,8 @@ class CloudMusicPackage {
             return clazz;
         }
 
-        static Method getLikeBottomOnClickMethod() throws IllegalAccessException, IOException, PackageManager.NameNotFoundException {
-            if (m_likeBottomOnClick == null) {
+        static Method getLikeButtonOnClickMethod() throws IllegalAccessException, IOException, PackageManager.NameNotFoundException {
+            if (m_likeButtonOnClick == null) {
                 String playerActivity = version.startsWith("3.0")
                         ? PlayerActivity.getClazz().getName()
                         : PlayerActivity.getClazz().getSuperclass().getName();
@@ -518,14 +518,14 @@ class CloudMusicPackage {
                 }
 
                 if (maxK > -1) {
-                    m_likeBottomOnClick = findMethodExact(playerActivity + "$" + maxK, classLoader, "onClick", View.class);
-                    return m_likeBottomOnClick;
+                    m_likeButtonOnClick = findMethodExact(playerActivity + "$" + maxK, classLoader, "onClick", View.class);
+                    return m_likeButtonOnClick;
                 }
 
-                throw new RuntimeException("can't find getLikeBottomOnClickMethod");
+                throw new RuntimeException("can't find getLikeButtonOnClickMethod");
             }
 
-            return m_likeBottomOnClick;
+            return m_likeButtonOnClick;
         }
 
         Object getMusicInfo() throws IllegalAccessException {
