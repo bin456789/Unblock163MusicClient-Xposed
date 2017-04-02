@@ -3,13 +3,6 @@ language: android
 jdk:
   - oraclejdk8
 
-before_install:
-  - if [[ "${TRAVIS_PULL_REQUEST}" = "false" ]]; then
-        openssl aes-256-cbc -K $encrypted_3327ea27a2f5_key -iv $encrypted_3327ea27a2f5_iv -in Bin.jks.enc -out Bin.jks -d;
-    fi
-  - rvm install 2.2.2
-  - rvm use 2.2.2
-  - gem install fir-cli
 
 android:
   components:
@@ -21,6 +14,7 @@ android:
 
 script:
   - if [[ "${TRAVIS_PULL_REQUEST}" = "false" ]]; then
+        openssl aes-256-cbc -K $encrypted_3327ea27a2f5_key -iv $encrypted_3327ea27a2f5_iv -in Bin.jks.enc -out Bin.jks -d;
         ./gradlew assembleRelease --stacktrace;
     else
         ./gradlew assembleDebug  --stacktrace;
@@ -41,4 +35,7 @@ deploy:
     tags: true
 
 after_deploy:
-   - fir p $APK_PATH -T $FIR_TOKEN -c "`git cat-file tag $TRAVIS_TAG`"
+  - rvm install 2.2.2
+  - rvm use 2.2.2
+  - gem install fir-cli
+  - fir p $APK_PATH -T $FIR_TOKEN -c "`git cat-file tag $TRAVIS_TAG`"
