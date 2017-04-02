@@ -18,4 +18,7 @@
     <string name="dislike_confirm_title">取消红心前确认</string>
     <string name="dislike_confirm_question">确定取消红心？</string>
 
+    <string name="active_now">立即激活</string>
+    <string name="xposed_installer_not_installed">Xposed Installer 未安装</string>
+
 </resources>
