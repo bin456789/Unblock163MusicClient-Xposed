@@ -134,140 +134,140 @@ class Handler {
         return originalContent;
     }
 
-    private static boolean processSong(JSONObject originalSong, int expectBitrate, String from) {
+    private static boolean processSong(JSONObject oldSongJson, int expectBitrate, String from) {
         // 异常在这方法里处理，防止影响下一曲
         try {
-            Song oldSong = new Song(originalSong);
+            if (oldSongJson == null)
+                return false;
+
+            Song oldSong = new Song(oldSongJson);
+
             if (oldSong.uf != null)
                 return false;
 
-            Song song = null;
             if (expectBitrate > 320000)
                 expectBitrate = 320000;
 
-            if ((oldSong.fee != 0 && oldSong.payed == 0 && oldSong.br < expectBitrate)
-                    || oldSong.url == null) {
+            if (oldSong.url == null
+                    || (oldSong.fee != 0 && oldSong.payed == 0 && oldSong.br < expectBitrate)) {
+
                 boolean isAccessible = false;
+                Song song = null;
 
-                // p
-                JSONObject pJson = Handler.getSongByRemoteApi(oldSong.id, expectBitrate);
-                if (pJson != null) {
-                    song = new Song(pJson);
-                    isAccessible = song.checkAccessable();
-
-                    // m
-                    if (!isAccessible) {
-                        song.url = Handler.convertPtoM(song.url);
+                try {
+                    // p
+                    JSONObject pJson = Handler.getSongByRemoteApi(oldSong.id, expectBitrate);
+                    if (pJson != null) {
+                        song = new Song(pJson);
                         isAccessible = song.checkAccessable();
-                    }
 
-                    // p 320k
-                    if (!isAccessible && pJson.has("h")) {
-                        song = new Song(pJson.optJSONObject("h"));
-                        isAccessible = song.checkAccessable();
-                    }
+                        // m
+                        if (!isAccessible) {
+                            song.url = Handler.convertPtoM(song.url);
+                            isAccessible = song.checkAccessable();
+                        }
 
-                    // m 320k
-                    if (!isAccessible && song.url != null) {
-                        song.url = Handler.convertPtoM(song.url);
-                        isAccessible = song.checkAccessable();
+                        // p 320k
+                        if (!isAccessible && pJson.has("h")) {
+                            song = new Song(pJson.optJSONObject("h"));
+                            isAccessible = song.checkAccessable();
+
+                            // m 320k
+                            if (!isAccessible && song.url != null) {
+                                song.url = Handler.convertPtoM(song.url);
+                                isAccessible = song.checkAccessable();
+                            }
+                        }
                     }
+                } catch (Throwable t) {
+                    XposedBridge.log("song api failed");
+                    XposedBridge.log(t);
                 }
 
                 if (!isAccessible) {
-                    if (oldSong.code == 404 || ("download".equals(from) && oldSong.code == -110)) {
-                        JSONObject thirdJson = Handler.getSongBy3rd(oldSong.id, expectBitrate);
-                        if (thirdJson != null) {
-                            song = new Song(thirdJson);
-                            song.checkAccessable(); // fix music size
+                    try {
+                        if (oldSong.code == 404 || ("download".equals(from) && oldSong.code == -110)) {
+                            JSONObject thirdJson = Handler.getSongBy3rd(oldSong.id, expectBitrate);
+                            if (thirdJson != null) {
+                                song = new Song(thirdJson);
+                                isAccessible = song.checkAccessable(); // fix music size
+                            }
+                        } else {
+                            JSONObject enhanceJson = Handler.getSongByRemoteApiEnhance(oldSong.id, expectBitrate);
+                            if (enhanceJson != null) {
+                                song = new Song(enhanceJson);
+                                isAccessible = true;
+                            }
                         }
-                    } else {
-                        JSONObject enhanceJson = Handler.getSongByRemoteApiEnhance(oldSong.id, expectBitrate);
-                        if (enhanceJson != null) {
-                            song = new Song(enhanceJson);
-                        }
+                    } catch (Throwable t) {
+                        XposedBridge.log("songx/3rd api failed");
+                        XposedBridge.log(t);
                     }
                 }
-            }
 
-            if (song == null || song.url == null)
-                return false;
+                if (isAccessible) {
+                    oldSongJson.put("br", song.br)
+                            .put("code", 200)
+                            .put("gain", song.gain)
+                            .put("md5", song.md5)
+                            .put("size", song.size)
+                            .put("type", song.type)
+                            .put("url", song.url);
 
-
-            originalSong.put("br", song.br)
-                    .put("code", 200)
-                    .put("gain", song.gain)
-                    .put("md5", song.md5)
-                    .put("size", song.size)
-                    .put("type", song.type)
-                    .put("url", song.url);
-
-            try {
-                if (song.isMatchedSong()) {
-                    File dir = CloudMusicPackage.NeteaseMusicApplication.getMusicCacheDir();
-                    String fileName = String.format("%s-%s-%s.%s.xp!", song.id, song.br, song.md5, song.type);
-                    File file = new File(dir, fileName);
-                    String str = song.getMatchedJson().toString();
-                    Utility.writeFile(file, str);
-                } else {
-                    File dir = CloudMusicPackage.NeteaseMusicApplication.getMusicCacheDir();
-                    String start = String.format("%s-%s", song.id, song.br);
-                    String end = ".xp!";
-                    File file = Utility.findFirstFile(dir, start, end);
-                    Utility.deleteFile(file);
+                    try {
+                        if (song.isMatchedSong()) {
+                            File dir = CloudMusicPackage.NeteaseMusicApplication.getMusicCacheDir();
+                            String fileName = String.format("%s-%s-%s.%s.xp!", song.id, song.br, song.md5, song.type);
+                            File file = new File(dir, fileName);
+                            String str = song.getMatchedJson().toString();
+                            Utility.writeFile(file, str);
+                        } else {
+                            File dir = CloudMusicPackage.NeteaseMusicApplication.getMusicCacheDir();
+                            String start = String.format("%s-%s", song.id, song.br);
+                            String end = ".xp!";
+                            File file = Utility.findFirstFile(dir, start, end);
+                            Utility.deleteFile(file);
+                        }
+                    } catch (Throwable t) {
+                        XposedBridge.log("read 3rd party tips failed");
+                        XposedBridge.log(t);
+                    }
+                    return true;
                 }
-            } catch (Throwable t) {
-                XposedBridge.log(t);
             }
-            return true;
-
         } catch (Throwable t) {
+            XposedBridge.log("old song failed");
             XposedBridge.log(t);
-            return false;
         }
+        return false;
     }
 
-    private static JSONObject getSongByRemoteApi(final long songId, final int expectBitrate) {
-        try {
-            Map<String, String> map = new LinkedHashMap<String, String>() {{
-                put("id", String.valueOf(songId));
-                put("br", String.valueOf(expectBitrate));
-                put("withHQ", "1");
-            }};
-            String raw = Http.post(XAPI + "song", map).getResponseText();
-            return new JSONObject(raw).getJSONObject("data");
-        } catch (Throwable t) {
-            XposedBridge.log(t);
-            return null;
-        }
+    private static JSONObject getSongByRemoteApi(final long songId, final int expectBitrate) throws Throwable {
+        Map<String, String> map = new LinkedHashMap<String, String>() {{
+            put("id", String.valueOf(songId));
+            put("br", String.valueOf(expectBitrate));
+            put("withHQ", "1");
+        }};
+        String raw = Http.post(XAPI + "song", map).getResponseText();
+        return new JSONObject(raw).getJSONObject("data");
     }
 
-    private static JSONObject getSongByRemoteApiEnhance(final long songId, final int expectBitrate) {
-        try {
-            Map<String, String> map = new LinkedHashMap<String, String>() {{
-                put("id", String.valueOf(songId));
-                put("br", String.valueOf(expectBitrate));
-            }};
-            String raw = Http.post(XAPI + "songx", map).getResponseText();
-            return new JSONObject(raw).getJSONObject("data");
-        } catch (Throwable t) {
-            XposedBridge.log(t);
-            return null;
-        }
+    private static JSONObject getSongByRemoteApiEnhance(final long songId, final int expectBitrate) throws Throwable {
+        Map<String, String> map = new LinkedHashMap<String, String>() {{
+            put("id", String.valueOf(songId));
+            put("br", String.valueOf(expectBitrate));
+        }};
+        String raw = Http.post(XAPI + "songx", map).getResponseText();
+        return new JSONObject(raw).getJSONObject("data");
     }
 
-    private static JSONObject getSongBy3rd(final long songId, final int expectBitrate) {
-        try {
-            Map<String, String> map = new LinkedHashMap<String, String>() {{
-                put("id", String.valueOf(songId));
-                put("br", String.valueOf(expectBitrate));
-            }};
-            String raw = Http.post(XAPI + "3rd/match", map).getResponseText();
-            return new JSONObject(raw).getJSONObject("data");
-        } catch (Throwable t) {
-            XposedBridge.log(t);
-            return null;
-        }
+    private static JSONObject getSongBy3rd(final long songId, final int expectBitrate) throws Throwable {
+        Map<String, String> map = new LinkedHashMap<String, String>() {{
+            put("id", String.valueOf(songId));
+            put("br", String.valueOf(expectBitrate));
+        }};
+        String raw = Http.post(XAPI + "3rd/match", map).getResponseText();
+        return new JSONObject(raw).getJSONObject("data");
     }
 
     private static String convertPtoM(String pUrl) {
