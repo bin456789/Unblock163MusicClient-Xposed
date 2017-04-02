@@ -41,7 +41,7 @@ import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
 import static de.robv.android.xposed.XposedHelpers.findClass;
 
 @SuppressWarnings({"unused", "WeakerAccess"})
-class Utility {
+public class Utility {
     private static SimpleResolver cnDnsResolver;
     private static WeakReference<Resources> moduleResources = new WeakReference<>(null);
 
@@ -194,6 +194,7 @@ class Utility {
         }
     }
 
+    @SuppressWarnings("ResultOfMethodCallIgnored")
     static void writeFile(File file, String string) throws IOException {
         file.getParentFile().mkdirs();
 
@@ -293,6 +294,15 @@ class Utility {
             }
         }
         return filteredList;
+    }
+
+    public static boolean isAppInstalled(Context context, String packageName) {
+        try {
+            context.getPackageManager().getApplicationInfo(packageName, 0);
+            return true;
+        } catch (PackageManager.NameNotFoundException e) {
+            return false;
+        }
     }
 
     static class AlphanumComparator implements Comparator<String> {
