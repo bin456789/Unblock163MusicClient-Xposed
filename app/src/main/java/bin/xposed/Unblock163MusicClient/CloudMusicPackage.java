@@ -25,7 +25,6 @@ import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
 import de.robv.android.xposed.XposedHelpers;
-import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
@@ -41,9 +40,9 @@ class CloudMusicPackage {
     private static ClassLoader classLoader;
 
 
-    static void init(XC_LoadPackage.LoadPackageParam lpparam, Application application) throws PackageManager.NameNotFoundException, IOException, IllegalAccessException {
-        classLoader = lpparam.classLoader;
-        version = application.getPackageManager().getPackageInfo(lpparam.packageName, 0).versionName;
+    static void init(Context context) throws PackageManager.NameNotFoundException, IOException, IllegalAccessException {
+        classLoader = context.getClassLoader();
+        version = context.getPackageManager().getPackageInfo(PACKAGE_NAME, 0).versionName;
         HttpEapi.init();
     }
 
@@ -112,7 +111,8 @@ class CloudMusicPackage {
                 File file = Utility.findFirstFile(dir, start, end);
                 if (file != null) {
                     String jsonStr = Utility.readFile(file);
-                    Song song = new Song(new JSONObject(jsonStr));
+                    Song song = new Song();
+                    song.parseMatchInfo(new JSONObject(jsonStr));
                     if (song.isMatchedSong()) {
                         return String.format("(音源%s：%s - %s)",
                                 song.matchedPlatform,
@@ -175,7 +175,8 @@ class CloudMusicPackage {
         }
 
         static String generateUrl(long fid) {
-            return (String) callStaticMethod(getClazz(), "a", fid);
+            String serial = (String) callStaticMethod(getClazz(), "serialurl", String.valueOf(fid));
+            return String.format("http://p1.music.126.net/%s/%s.mp3", serial, fid);
         }
     }
 
@@ -542,7 +543,7 @@ class CloudMusicPackage {
         static Method getCalcMd5Method() throws IllegalAccessException, IOException, PackageManager.NameNotFoundException {
             if (m_calcMd5 == null) {
                 Pattern pattern = Pattern.compile("^com\\.netease\\.cloudmusic\\.module\\.transfer\\.[a-z]\\.[a-z]$");
-                List<String> list = getFilteredClasses(pattern);
+                List<String> list = getFilteredClasses(pattern, Collections.<String>reverseOrder());
                 for (String curStr : list) {
                     for (Method m : XposedHelpers.findClass(curStr, classLoader).getDeclaredMethods()) {
                         Class[] params = m.getParameterTypes();

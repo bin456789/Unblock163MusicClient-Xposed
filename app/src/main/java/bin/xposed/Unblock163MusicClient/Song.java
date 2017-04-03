@@ -3,6 +3,8 @@ package bin.xposed.Unblock163MusicClient;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.Locale;
+
 import de.robv.android.xposed.XposedBridge;
 
 import static bin.xposed.Unblock163MusicClient.Utility.optString;
@@ -23,28 +25,48 @@ class Song {
     String matchedPlatform;
     String matchedSongName;
     String matchedArtistName;
+    boolean matchedDuration;
 
-    Song(JSONObject songJson) {
-        if (songJson != null) {
-            id = songJson.optLong("id");
-            code = songJson.optInt("code");
-            br = songJson.optInt("br");
-            fee = songJson.optInt("fee");
-            gain = (float) songJson.optDouble("gain");
-            md5 = optString(songJson, "md5");
-            payed = songJson.optInt("payed");
-            size = songJson.optLong("size");
-            type = optString(songJson, "type");
-            uf = songJson.optJSONObject("uf");
-            url = optString(songJson, "url");
-            matchedPlatform = optString(songJson, "matchedPlatform");
-            matchedSongName = optString(songJson, "matchedSongName");
-            matchedArtistName = optString(songJson, "matchedArtistName");
-        }
+    static Song parseFromOther(JSONObject songJson) {
+        Song song = new Song();
+        song.id = songJson.optLong("id");
+        song.code = songJson.optInt("code");
+        song.br = songJson.optInt("br");
+        song.fee = songJson.optInt("fee");
+        song.gain = (float) songJson.optDouble("gain");
+        song.md5 = optString(songJson, "md5");
+        song.payed = songJson.optInt("payed");
+        song.size = songJson.optLong("size");
+        song.type = optString(songJson, "type");
+        song.uf = songJson.optJSONObject("uf");
+        song.url = optString(songJson, "url");
+        song.parseMatchInfo(songJson);
+        return song;
     }
 
+    static Song parseFromDetail(JSONObject songJson, int br) {
+        Song song = new Song();
+        long fid = songJson.optLong("fid");
+        if (fid > 0) {
+            song.br = br;
+            song.gain = (float) songJson.optDouble("vd");
+            song.md5 = String.format(Locale.getDefault(), "%032d", fid);
+            song.size = songJson.optLong("size");
+            song.type = "mp3";
+            song.url = CloudMusicPackage.NeteaseMusicUtils.generateUrl(fid);
+            return song;
+        } else
+            throw new RuntimeException("fid invalid");
+    }
 
-    boolean checkAccessable() {
+    void parseMatchInfo(JSONObject songJson) {
+        matchedPlatform = optString(songJson, "matchedPlatform");
+        matchedSongName = optString(songJson, "matchedSongName");
+        matchedArtistName = optString(songJson, "matchedArtistName");
+        matchedDuration = songJson.optBoolean("matchedDuration");
+    }
+
+    boolean checkAccessible() {
         String tmpUrl = url;
         if (tmpUrl != null) {
             try {

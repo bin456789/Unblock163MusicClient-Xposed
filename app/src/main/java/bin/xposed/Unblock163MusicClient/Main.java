@@ -54,7 +54,7 @@ public class Main implements IXposedHookLoadPackage {
             findAndHookMethod(Application.class, "attach", Context.class, new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    CloudMusicPackage.init(lpparam, (Application) param.thisObject);
+                    CloudMusicPackage.init((Context) param.thisObject);
 
                     // main
                     findAndHookMethod(CloudMusicPackage.HttpEapi.getClazz(), "a", String.class, new XC_MethodHook() {
@@ -163,7 +163,7 @@ public class Main implements IXposedHookLoadPackage {
                                         long musicId = new CloudMusicPackage.MusicInfo(musicInfo).getMatchedMusicId();
                                         boolean isStarred = CloudMusicPackage.MusicInfo.isStarred(musicId);
                                         if (isStarred) {
-                                            callStaticMethod(CloudMusicPackage.UIAA.getClazz(), "a", currentActivity, "确定取消红心？", "确定", new View.OnClickListener() {
+                                            callStaticMethod(CloudMusicPackage.UIAA.getClazz(), "a", currentActivity, "确定不再收藏此歌曲吗？", "不再收藏", new View.OnClickListener() {
                                                 @Override
                                                 public void onClick(View v) {
                                                     try {
