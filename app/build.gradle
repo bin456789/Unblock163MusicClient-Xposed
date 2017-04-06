@@ -7,10 +7,12 @@ android {
     signingConfigs {
         release {
             if (System.getenv()["CI"]) {
-                storeFile file(System.getenv("STORE_FILE"))
-                storePassword System.getenv("STORE_PASSWORD")
-                keyAlias System.getenv("KEY_ALIAS")
-                keyPassword System.getenv("KEY_PASSWORD")
+                if (System.getenv()["TRAVIS_PULL_REQUEST"] == "false") {
+                    storeFile file(System.getenv("STORE_FILE"))
+                    storePassword System.getenv("STORE_PASSWORD")
+                    keyAlias System.getenv("KEY_ALIAS")
+                    keyPassword System.getenv("KEY_PASSWORD")
+                }
             } else {
                 storeFile file(STORE_FILE)
                 storePassword STORE_PASSWORD
