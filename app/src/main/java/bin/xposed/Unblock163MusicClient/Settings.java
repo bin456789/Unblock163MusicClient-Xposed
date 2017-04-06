@@ -28,6 +28,10 @@ class Settings {
         return getModuleSharedPreferences().getBoolean("DISLIKE_CONFIRM", false);
     }
 
+    static boolean isPreventGray() {
+        return getModuleSharedPreferences().getBoolean("PREVENT_GRAY", false);
+    }
+
     static String getDnsServer() {
         return "219.141.140.10";
     }

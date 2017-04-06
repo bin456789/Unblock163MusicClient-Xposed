@@ -35,6 +35,7 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import de.robv.android.xposed.XposedBridge;
+import de.robv.android.xposed.XposedHelpers;
 
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
@@ -303,6 +304,17 @@ public class Utility {
         } catch (PackageManager.NameNotFoundException e) {
             return false;
         }
+    }
+
+    static boolean isCallFromMyself() {
+        StackTraceElement[] elements = Thread.currentThread().getStackTrace();
+        for (StackTraceElement element : elements) {
+            if (element.getClassName().equals(XposedHelpers.class.getName())
+                    && element.getMethodName().equals("callMethod")) {
+                return true;
+            }
+        }
+        return false;
     }
 
     static class AlphanumComparator implements Comparator<String> {

@@ -331,6 +331,21 @@ public class Main implements IXposedHookLoadPackage {
                             XposedBridge.log(t);
                         }
                     }
+
+                    if (Settings.isPreventGray()) {
+                        try {
+                            findAndHookMethod(CloudMusicPackage.MusicInfo.getClazz(), "hasCopyRight", new XC_MethodHook() {
+                                @Override
+                                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                                    if (!Utility.isCallFromMyself()) {
+                                        param.setResult(true);
+                                    }
+                                }
+                            });
+                        } catch (Throwable t) {
+                            XposedBridge.log(t);
+                        }
+                    }
                 }
             });
         }

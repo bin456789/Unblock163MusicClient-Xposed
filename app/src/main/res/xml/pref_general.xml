@@ -8,4 +8,8 @@
         android:defaultValue="false"
         android:key="DISLIKE_CONFIRM"
         android:title="@string/dislike_confirm_title" />
+    <CheckBoxPreference
+        android:defaultValue="false"
+        android:key="PREVENT_GRAY"
+        android:title="@string/prevent_gray_title" />
 </PreferenceScreen>

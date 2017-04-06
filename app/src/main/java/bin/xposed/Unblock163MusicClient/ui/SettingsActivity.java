@@ -33,6 +33,8 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         setWorldReadable();
         addPreferencesFromResource(R.xml.pref_general);
 
+        getPreferenceScreen().removePreference(findPreference("PREVENT_GRAY"));
+
         checkState();
         checkIcon();
     }
