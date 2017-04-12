@@ -144,7 +144,7 @@ class Handler {
         return originalContent;
     }
 
-    private static boolean processSong(JSONObject oldSongJson, int expectBitrate, String from) {
+    private static boolean processSong(JSONObject oldSongJson, int expectBr, String from) {
         // 异常在这方法里处理，防止影响下一曲
         if (oldSongJson == null)
             return false;
@@ -155,21 +155,24 @@ class Handler {
             if (oldSong.uf != null)
                 return false;
 
-            if (expectBitrate > 320000)
-                expectBitrate = 320000;
+            if (expectBr > 320000)
+                expectBr = 320000;
 
             if (oldSong.url == null
-                    || (oldSong.fee != 0 && oldSong.payed == 0 && oldSong.br < expectBitrate)) {
+                    || (oldSong.fee != 0 && oldSong.payed == 0 && oldSong.br < expectBr)) {
 
                 Song song1 = null;
                 Song song3 = null;
                 boolean song1Accessible = false;
                 boolean song3Accessible = false;
 
+                int maxBr = 0;
 
                 // detail
                 try {
-                    song1 = getSongByDetailApi(oldSong.id, expectBitrate);
+                    DetailApiReturnObject object = getSongByDetailApi(oldSong.id, expectBr);
+                    song1 = object.song;
+                    maxBr = object.maxBr;
                     if (song1 != null) {
                         song1Accessible = true;
                     }
@@ -179,13 +182,13 @@ class Handler {
                 }
 
                 // 3rd / enhance
-                if (!song1Accessible || song1.br < expectBitrate) {
+                if (!song1Accessible || (song1.br < expectBr && song1.br < maxBr)) {
                     try {
                         if (oldSong.code == 404 || ("download".equals(from) && oldSong.code == -110)) {
-                            song3 = Handler.getSongBy3rdApi(oldSong.id, expectBitrate);
+                            song3 = Handler.getSongBy3rdApi(oldSong.id, expectBr);
                             song3Accessible = song3.checkAccessible(); // fix music size
                         } else {
-                            song1 = Handler.getSongByRemoteApiEnhance(oldSong.id, expectBitrate);
+                            song1 = Handler.getSongByRemoteApiEnhance(oldSong.id, expectBr);
                             song1Accessible = true;
                         }
                     } catch (Throwable t) {
@@ -278,14 +281,14 @@ class Handler {
         return Song.parseFromOther(json);
     }
 
-
-    private static Song getSongByDetailApi(long songId, final int expectBitrate) throws Throwable {
+    private static DetailApiReturnObject getSongByDetailApi(long songId, final int expectBitrate) throws Throwable {
         Map<String, String> map = new HashMap<>();
         JSONArray c = new JSONArray().put(new JSONObject().put("id", songId).put("v", 0));
         map.put("c", c.toString());
 
         String page = CloudMusicPackage.HttpEapi.post("v3/song/detail", map);
-        JSONObject detail = (JSONObject) new JSONObject(page).getJSONArray("songs").get(0);
+        JSONObject detailJson = new JSONObject(page);
+        JSONObject songsJson = detailJson.getJSONArray("songs").getJSONObject(0);
 
         // find first detail br >= expect br
         int firstIndex = 0;
@@ -309,10 +312,12 @@ class Handler {
             seqList.add(key);
         }
 
+        DetailApiReturnObject ret = new DetailApiReturnObject();
+
         for (String quality : seqList) {
-            if (detail.has(quality) && !detail.isNull(quality)) {
+            if (songsJson.has(quality) && !songsJson.isNull(quality)) {
                 try {
-                    Song song = Song.parseFromDetail(detail.getJSONObject(quality), QUALITY_MAP.get(quality));
+                    Song song = Song.parseFromDetail(songsJson.getJSONObject(quality), QUALITY_MAP.get(quality));
                     boolean accessible = song.checkAccessible();
                     if (!accessible) {
                         // m
@@ -320,14 +325,22 @@ class Handler {
                         accessible = song.checkAccessible();
                     }
                     if (accessible) {
-                        return song;
+                        ret.song = song;
+                        ret.isBrQualify = QUALITY_MAP.get(quality) >= expectBitrate;
                     }
                 } catch (Throwable t) {
                     XposedBridge.log(t);
                 }
             }
         }
-        return null;
+
+        try {
+            ret.maxBr = detailJson.getJSONArray("privileges").getJSONObject(0).getInt("maxbr");
+        } catch (Throwable t) {
+            XposedBridge.log(t);
+        }
+
+        return ret;
     }
 
     private static String convertPtoM(String pUrl) {
@@ -335,6 +348,12 @@ class Handler {
             return "http://m2" + pUrl.substring(pUrl.indexOf('.'));
         }
         return null;
+    }
+
+    private static class DetailApiReturnObject {
+        Song song;
+        int maxBr;
+        boolean isBrQualify;
     }
 }
 
