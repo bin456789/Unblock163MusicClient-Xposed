@@ -327,6 +327,7 @@ class Handler {
                     if (accessible) {
                         ret.song = song;
                         ret.isBrQualify = QUALITY_MAP.get(quality) >= expectBitrate;
+                        break;
                     }
                 } catch (Throwable t) {
                     XposedBridge.log(t);
