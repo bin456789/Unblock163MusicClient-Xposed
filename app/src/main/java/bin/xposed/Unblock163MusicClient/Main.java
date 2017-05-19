@@ -251,7 +251,9 @@ public class Main implements IXposedHookLoadPackage {
                                                         Object newHttpRoute = newInstance(HttpRoute, newHttpHost, null, false);
                                                         param.setResult(newHttpRoute);
                                                     } else if (host.endsWith("imusicapp.cn")) {
-                                                        // do nothing for now
+                                                        // imusicapp.cn 可能会引起 SocketTimeoutException 假死
+                                                        Object requestParams = callMethod(callMethod(paramHttpRequest, "getParams"), "getRequestParams");
+                                                        callMethod(requestParams, "setParameter", "http.socket.timeout", 3000);
                                                     } else {
                                                         // remove proxy
                                                         callMethod(originalHttpRequest, "removeHeaders", "Authorization");
