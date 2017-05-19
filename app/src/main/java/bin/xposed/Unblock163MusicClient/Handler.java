@@ -28,7 +28,6 @@ class Handler {
     private static final Pattern REX_SUBP = Pattern.compile("\"subp\":\\d+");
     private static final Map<String, Integer> QUALITY_MAP = new LinkedHashMap<String, Integer>() {
         {
-            put("a", 64000);
             put("l", 128000);
             put("m", 192000);
             put("h", 320000);
@@ -188,8 +187,11 @@ class Handler {
                             song3 = Handler.getSongBy3rdApi(oldSong.id, expectBr);
                             song3Accessible = song3.checkAccessible(); // fix music size
                         } else {
-                            song1 = Handler.getSongByRemoteApiEnhance(oldSong.id, expectBr);
-                            song1Accessible = true;
+                            Song songx = Handler.getSongByRemoteApiEnhance(oldSong.id, expectBr);
+                            if (songx.url != null) {
+                                song1 = songx;
+                                song1Accessible = true;
+                            }
                         }
                     } catch (Throwable t) {
                         XposedBridge.log("songx/3rd api failed");
@@ -286,7 +288,9 @@ class Handler {
         JSONArray c = new JSONArray().put(new JSONObject().put("id", songId).put("v", 0));
         map.put("c", c.toString());
 
-        String page = CloudMusicPackage.HttpEapi.post("v3/song/detail", map);
+        String page = false
+                ? CloudMusicPackage.HttpEapi.post("v3/song/detail", map).getResponseText() // can't get fid
+                : Http.post(XAPI + "detail", map).getResponseText();
         JSONObject detailJson = new JSONObject(page);
         JSONObject songsJson = detailJson.getJSONArray("songs").getJSONObject(0);
 
@@ -313,32 +317,32 @@ class Handler {
         }
 
         DetailApiReturnObject ret = new DetailApiReturnObject();
-
+        boolean isFind = false;
         for (String quality : seqList) {
             if (songsJson.has(quality) && !songsJson.isNull(quality)) {
-                try {
-                    Song song = Song.parseFromDetail(songsJson.getJSONObject(quality), QUALITY_MAP.get(quality));
-                    boolean accessible = song.checkAccessible();
-                    if (!accessible) {
-                        // m
-                        song.url = convertPtoM(song.url);
-                        accessible = song.checkAccessible();
+                // correct br
+                int curBr = QUALITY_MAP.get(quality);
+                if (curBr > ret.maxBr) {
+                    ret.maxBr = curBr;
+                }
+                if (!isFind) {
+                    try {
+                        Song song = Song.parseFromDetail(songsJson.getJSONObject(quality), curBr);
+                        boolean accessible = song.checkAccessible();
+                        if (!accessible) {
+                            // m
+                            song.url = convertPtoM(song.url);
+                            accessible = song.checkAccessible();
+                        }
+                        if (accessible) {
+                            ret.song = song;
+                            isFind = true;
+                        }
+                    } catch (Throwable t) {
+                        XposedBridge.log(t);
                     }
-                    if (accessible) {
-                        ret.song = song;
-                        ret.isBrQualify = QUALITY_MAP.get(quality) >= expectBitrate;
-                        break;
-                    }
-                } catch (Throwable t) {
-                    XposedBridge.log(t);
                 }
             }
-        }
-
-        try {
-            ret.maxBr = detailJson.getJSONArray("privileges").getJSONObject(0).getInt("maxbr");
-        } catch (Throwable t) {
-            XposedBridge.log(t);
         }
 
         return ret;
@@ -354,7 +358,6 @@ class Handler {
     private static class DetailApiReturnObject {
         Song song;
         int maxBr;
-        boolean isBrQualify;
     }
 }
 

@@ -309,8 +309,8 @@ class CloudMusicPackage {
             }
         }
 
-        static String post(String path, Map<String, String> dataMap) throws InvocationTargetException, IllegalAccessException {
-            return new HttpEapi(path, dataMap).startRequestChained().getResponseText();
+        static HttpEapi post(String path, Map<String, String> dataMap) throws InvocationTargetException, IllegalAccessException {
+            return new HttpEapi(path, dataMap).startRequestChained();
         }
 
         @SuppressWarnings("unchecked")
