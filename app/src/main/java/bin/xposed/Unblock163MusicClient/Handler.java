@@ -180,12 +180,10 @@ class Handler {
                     XposedBridge.log(t);
                 }
 
-                // 3rd / enhance
+                // enhance
                 if (!song1Accessible || (song1.br < expectBr && song1.br < maxBr)) {
                     try {
                         if (oldSong.code == 404 || ("download".equals(from) && oldSong.code == -110)) {
-                            song3 = Handler.getSongBy3rdApi(oldSong.id, expectBr);
-                            song3Accessible = song3.checkAccessible(); // fix music size
                         } else {
                             Song songx = Handler.getSongByRemoteApiEnhance(oldSong.id, expectBr);
                             if (songx.url != null) {
@@ -194,7 +192,20 @@ class Handler {
                             }
                         }
                     } catch (Throwable t) {
-                        XposedBridge.log("songx/3rd api failed");
+                        XposedBridge.log("songx api failed");
+                        XposedBridge.log(t);
+                    }
+                }
+
+                // 3rd
+                if (!song1Accessible || (song1.br < expectBr && song1.br < maxBr)) {
+                    try {
+                        if (oldSong.code == 404 || ("download".equals(from) && oldSong.code == -110)) {
+                            song3 = Handler.getSongBy3rdApi(oldSong.id, expectBr);
+                            song3Accessible = song3.checkAccessible(); // fix music size
+                        }
+                    } catch (Throwable t) {
+                        XposedBridge.log("3rd api failed");
                         XposedBridge.log(t);
                     }
                 }
