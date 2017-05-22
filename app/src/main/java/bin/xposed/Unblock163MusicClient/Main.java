@@ -240,6 +240,12 @@ public class Main implements IXposedHookLoadPackage {
                                                     callMethod(originalHttpRequest, "removeHeaders", "Referer");
                                                 }
 
+                                                // imusicapp.cn 可能会引起 SocketTimeoutException 造成假死
+                                                if (host.endsWith("imusicapp.cn")) {
+                                                    Object requestParams = callMethod(callMethod(paramHttpRequest, "getParams"), "getRequestParams");
+                                                    callMethod(requestParams, "setParameter", "http.socket.timeout", 2000);
+                                                }
+
                                                 // 避免开通联通流量包后听不了
                                                 if (callMethod(resultHttpRoute, "getProxyHost") != null) {
                                                     if (host.endsWith("xiami.com") || (host.endsWith("alicdn.com"))) {
@@ -251,9 +257,7 @@ public class Main implements IXposedHookLoadPackage {
                                                         Object newHttpRoute = newInstance(HttpRoute, newHttpHost, null, false);
                                                         param.setResult(newHttpRoute);
                                                     } else if (host.endsWith("imusicapp.cn")) {
-                                                        // imusicapp.cn 可能会引起 SocketTimeoutException 假死
-                                                        Object requestParams = callMethod(callMethod(paramHttpRequest, "getParams"), "getRequestParams");
-                                                        callMethod(requestParams, "setParameter", "http.socket.timeout", 3000);
+                                                        // do nothing for now
                                                     } else {
                                                         // remove proxy
                                                         callMethod(originalHttpRequest, "removeHeaders", "Authorization");
