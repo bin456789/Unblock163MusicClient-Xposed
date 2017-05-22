@@ -13,9 +13,15 @@ import java.util.Calendar;
 import java.util.Date;
 import java.util.GregorianCalendar;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.concurrent.Callable;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 
 import de.robv.android.xposed.XposedBridge;
@@ -33,6 +39,7 @@ class Handler {
             put("h", 320000);
         }
     };
+    private static final ExecutorService handlerPool = Executors.newCachedThreadPool();
     private static long likePlaylistId = -1;
 
     static boolean isDomainExpired() {
@@ -47,7 +54,7 @@ class Handler {
         return originalContent;
     }
 
-    static String modifyPlayerOrDownloadApi(String originalContent, Object eapiObj, String from) throws JSONException {
+    static String modifyPlayerOrDownloadApi(String originalContent, Object eapiObj, final String from) throws JSONException {
         JSONObject originalJson = new JSONObject(originalContent);
         String path = new CloudMusicPackage.HttpEapi(eapiObj).getPath();
 
@@ -71,9 +78,26 @@ class Handler {
                 isModified = true;
         } else {
             JSONArray originalSongs = (JSONArray) data;
-            for (int i = 0; i < originalSongs.length(); i++)
-                if (processSong(originalSongs.getJSONObject(i), expectBitrate, from))
-                    isModified = true;
+            Set<Future<Boolean>> futureSet = new HashSet<>();
+            final int finalExpectBitrate = expectBitrate;
+            for (int i = 0; i < originalSongs.length(); i++) {
+                final JSONObject songJson = originalSongs.getJSONObject(i);
+                futureSet.add(handlerPool.submit(new Callable<Boolean>() {
+                    @Override
+                    public Boolean call() {
+                        return processSong(songJson, finalExpectBitrate, from);
+                    }
+                }));
+            }
+            for (Future<Boolean> booleanFuture : futureSet) {
+                try {
+                    if (booleanFuture.get()) {
+                        isModified = true;
+                    }
+                } catch (Throwable t) {
+                    t.printStackTrace();
+                }
+            }
         }
 
         if (isModified)
