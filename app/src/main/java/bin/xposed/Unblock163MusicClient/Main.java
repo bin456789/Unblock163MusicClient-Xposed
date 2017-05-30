@@ -240,9 +240,11 @@ public class Main implements IXposedHookLoadPackage {
                                                     callMethod(originalHttpRequest, "removeHeaders", "Referer");
                                                 }
 
-                                                // 防止 SocketTimeoutException 造成假死
-                                                Object requestParams = callMethod(callMethod(paramHttpRequest, "getParams"), "getRequestParams");
-                                                callMethod(requestParams, "setParameter", "http.socket.timeout", 2000);
+                                                // 防止 SocketTimeoutException 造成假死，xmusic除外，因为第三方匹配可能很慢
+                                                if (!host.endsWith("xmusic.top")) {
+                                                    Object requestParams = callMethod(callMethod(paramHttpRequest, "getParams"), "getRequestParams");
+                                                    callMethod(requestParams, "setParameter", "http.socket.timeout", 2000);
+                                                }
 
                                                 // 避免开通联通流量包后听不了
                                                 if (callMethod(resultHttpRoute, "getProxyHost") != null) {
