@@ -416,7 +416,7 @@ class Handler {
                 int br = QUALITY_MAP.get(quality);
                 if (br >= minBr && songsJson.has(quality) && !songsJson.isNull(quality)) {
                     try {
-                        Song song = Song.parseFromDetail(songsJson.getJSONObject(quality), br);
+                        Song song = Song.parseFromDetail(songsJson.getJSONObject(quality), songId, br);
                         if (song != null && song.url != null) {
                             if (song.checkAccessible())
                                 return song;

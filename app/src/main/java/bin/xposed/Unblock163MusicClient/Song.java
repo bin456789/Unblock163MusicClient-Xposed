@@ -44,10 +44,11 @@ class Song {
         return song;
     }
 
-    static Song parseFromDetail(JSONObject songJson, int br) {
+    static Song parseFromDetail(JSONObject songJson, long id, int br) {
         Song song = new Song();
         long fid = songJson.optLong("fid");
         if (fid > 0) {
+            song.id = id;
             song.br = br;
             song.gain = (float) songJson.optDouble("vd");
             song.md5 = String.format(Locale.getDefault(), "%032d", fid);
@@ -84,6 +85,7 @@ class Song {
                     return true;
                 }
             } catch (Throwable t) {
+                XposedBridge.log(id + "\n" + br + "\n" + url);
                 XposedBridge.log(t);
             }
         }

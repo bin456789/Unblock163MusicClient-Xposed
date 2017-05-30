@@ -3,6 +3,8 @@ package bin.xposed.Unblock163MusicClient;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import de.robv.android.xposed.XposedBridge;
+
 class Http extends CloudMusicPackage.HttpBase {
 
     private Http(String method, String urlString, Map<String, String> postData, Map<String, String> additionalHeaders) throws Throwable {
@@ -17,6 +19,7 @@ class Http extends CloudMusicPackage.HttpBase {
             } catch (Throwable t) {
                 retryCount--;
                 if (retryCount <= 0) {
+                    XposedBridge.log(urlString);
                     throw t;
                 }
             }
