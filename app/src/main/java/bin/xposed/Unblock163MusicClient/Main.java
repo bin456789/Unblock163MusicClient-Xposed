@@ -226,46 +226,44 @@ public class Main implements IXposedHookLoadPackage {
                                             URI url = (URI) callMethod(originalHttpRequest, "getURI");
                                             String host = url.getHost();
 
+                                            // 防止 SocketTimeoutException 造成假死
+                                            int timeout = (host.endsWith("163.com") || host.endsWith(xapiHost)) ? 10000 : 3000;
+                                            Object requestParams = callMethod(callMethod(paramHttpRequest, "getParams"), "getRequestParams");
+                                            callMethod(requestParams, "setParameter", "http.socket.timeout", timeout);
 
-                                            if (!(host.endsWith("126.net") || host.endsWith("163.com"))) {
+                                            if (host.endsWith("126.net") || host.endsWith("163.com"))
+                                                return;
 
+                                            // cookie 处理
+                                            if (host.endsWith(xapiHost)) {
                                                 // 需要发送cookie到自己的服务器
-                                                if (host.endsWith(xapiHost)) {
-                                                    //client.getParams().setParameter(HttpMethodParams.SINGLE_COOKIE_HEADER, true);
-                                                    String cookieString = String.format("modver=%s;%s", BuildConfig.VERSION_NAME, CloudMusicPackage.HttpEapi.getDefaultCookie());
-                                                    callMethod(originalHttpRequest, "setHeader", "Cookie", cookieString);
+                                                String cookieString = String.format("modver=%s;%s", BuildConfig.VERSION_NAME, CloudMusicPackage.HttpEapi.getDefaultCookie());
+                                                callMethod(originalHttpRequest, "setHeader", "Cookie", cookieString);
+                                            } else {
+                                                // 避免发送网易cookie到xiami, qq ...
+                                                callMethod(originalHttpRequest, "removeHeaders", "Cookie");
+                                                callMethod(originalHttpRequest, "removeHeaders", "Referer");
+                                            }
+
+                                            // 避免开通联通流量包后听不了
+                                            if (callMethod(resultHttpRoute, "getProxyHost") != null) {
+                                                if (host.endsWith("xiami.com") || (host.endsWith("alicdn.com"))) {
+                                                    callMethod(originalHttpRequest, "setHeader", "Authorization", "Basic MzAwMDAwNDU5MDpGRDYzQTdBNTM0NUMxMzFF");
+                                                } else if (host.endsWith("qq.com")) {
+                                                    callMethod(originalHttpRequest, "removeHeaders", "Authorization");
+                                                    callMethod(paramHttpRequest, "setURI", URI.create(url.toString().replace("http:/", "")));
+                                                    Object newHttpHost = newInstance(HttpHost, "gd.unicommusic.gtimg.com", 8080);
+                                                    Object newHttpRoute = newInstance(HttpRoute, newHttpHost, null, false);
+                                                    param.setResult(newHttpRoute);
+                                                } else if (host.endsWith("imusicapp.cn")) {
+                                                    // do nothing for now
                                                 } else {
-                                                    // 避免发送网易cookie到xiami, qq ...
-                                                    callMethod(originalHttpRequest, "removeHeaders", "Cookie");
-                                                    callMethod(originalHttpRequest, "removeHeaders", "Referer");
-                                                }
-
-                                                // 防止 SocketTimeoutException 造成假死，xmusic除外，因为第三方匹配可能很慢
-                                                if (!host.endsWith("xmusic.top")) {
-                                                    Object requestParams = callMethod(callMethod(paramHttpRequest, "getParams"), "getRequestParams");
-                                                    callMethod(requestParams, "setParameter", "http.socket.timeout", 2000);
-                                                }
-
-                                                // 避免开通联通流量包后听不了
-                                                if (callMethod(resultHttpRoute, "getProxyHost") != null) {
-                                                    if (host.endsWith("xiami.com") || (host.endsWith("alicdn.com"))) {
-                                                        callMethod(originalHttpRequest, "setHeader", "Authorization", "Basic MzAwMDAwNDU5MDpGRDYzQTdBNTM0NUMxMzFF");
-                                                    } else if (host.endsWith("qq.com")) {
-                                                        callMethod(originalHttpRequest, "removeHeaders", "Authorization");
-                                                        callMethod(paramHttpRequest, "setURI", URI.create(url.toString().replace("http:/", "")));
-                                                        Object newHttpHost = newInstance(HttpHost, "gd.unicommusic.gtimg.com", 8080);
-                                                        Object newHttpRoute = newInstance(HttpRoute, newHttpHost, null, false);
-                                                        param.setResult(newHttpRoute);
-                                                    } else if (host.endsWith("imusicapp.cn")) {
-                                                        // do nothing for now
-                                                    } else {
-                                                        // remove proxy
-                                                        callMethod(originalHttpRequest, "removeHeaders", "Authorization");
-                                                        callMethod(paramHttpRequest, "setURI", URI.create(url.getPath()));
-                                                        Object newHttpHost = newInstance(HttpHost, host);
-                                                        Object newHttpRoute = newInstance(HttpRoute, newHttpHost, null, false);
-                                                        param.setResult(newHttpRoute);
-                                                    }
+                                                    // remove proxy
+                                                    callMethod(originalHttpRequest, "removeHeaders", "Authorization");
+                                                    callMethod(paramHttpRequest, "setURI", URI.create(url.getPath()));
+                                                    Object newHttpHost = newInstance(HttpHost, host);
+                                                    Object newHttpRoute = newInstance(HttpRoute, newHttpHost, null, false);
+                                                    param.setResult(newHttpRoute);
                                                 }
                                             }
                                         }
