@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">音量增強器</string>
+    <string name="xposed_description">僅供測試</string>
+    <string name="ok">確定</string>
+    <string name="cancel">取消</string>
+
+    <string name="confirm">確定</string>
+    <string name="source">來自</string>
+
+    <string name="hint_hide_icon">由於很少需要更改配置，本模組圖示將從桌面上移除。 \n\n下次可到 Xposed Installer 打開。 </string>
+    <string name="hint_reboot_setting_changed">重啟或結束音樂軟體進程後生效</string>
+    <string name="hint_reboot_not_active">模組未啟用，請先啟用模組並重啟手機</string>
+
+    <string name="oversea_mode_title">海外模式</string>
+    <string name="oversea_mode_description">國內用戶切勿勾選，否則會降低緩衝速度</string>
+
+    <string name="dislike_confirm_title">取消紅心前確認</string>
+    <string name="dislike_confirm_question">確定取消紅心？ </string>
+
+    <string name="prevent_gray_title">不變灰</string>
+
+    <string name="active_now">立即啟用</string>
+    <string name="xposed_installer_not_installed">Xposed Installer 未安裝</string>
+
+</resources>
