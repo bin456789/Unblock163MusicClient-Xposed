@@ -26,6 +26,8 @@ import java.util.regex.Pattern;
 
 import de.robv.android.xposed.XposedBridge;
 
+import static bin.xposed.Unblock163MusicClient.CloudMusicPackage.E.showToast;
+
 class Handler {
     static final String XAPI = "http://xmusic.xmusic.top/xapi/v1/";
     private static final Date DOMAIN_EXPIRED_DATE = new GregorianCalendar(2017, 10 - 1, 1).getTime();
@@ -108,15 +110,20 @@ class Handler {
     static String modifyPlaylistManipulateApi(String originalContent, Object eapiObj) throws Throwable {
         JSONObject originalJson = new JSONObject(originalContent);
         int code = originalJson.getInt("code");
+        if (code == 502) {
+            showToast("歌曲已存在");
 
-        // 重复收藏 502
-        if (code != 200 && code != 502) {
+        } else if (code != 200) {
             @SuppressWarnings({"unchecked"})
             Map<String, String> requestMap = new CloudMusicPackage.HttpEapi(eapiObj).getRequestMap();
             String raw = Http.post(XAPI + "manipulate", requestMap).getResponseText();
-            if (Utility.isJSONValid(raw)) {
-                return raw;
+            JSONObject json = new JSONObject(raw);
+            int xcode = json.optInt("code");
+            if (xcode == 401 || xcode == 512) {
+                json.put("code", 502);
+                showToast("下架/未购买的付费歌曲无法添加到歌单");
             }
+            return json.toString();
         }
         return originalContent;
     }

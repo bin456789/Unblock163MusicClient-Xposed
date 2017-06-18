@@ -35,8 +35,8 @@ import java.util.Map;
 import java.util.regex.Pattern;
 
 import de.robv.android.xposed.XposedBridge;
-import de.robv.android.xposed.XposedHelpers;
 
+import static android.os.Looper.getMainLooper;
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
 import static de.robv.android.xposed.XposedHelpers.findClass;
@@ -308,13 +308,27 @@ public class Utility {
 
     static boolean isCallFromMyself() {
         StackTraceElement[] elements = Thread.currentThread().getStackTrace();
+        boolean findAppStack = false;
+        boolean findModStack = false;
+
         for (StackTraceElement element : elements) {
-            if (element.getClassName().equals(XposedHelpers.class.getName())
-                    && element.getMethodName().equals("callMethod")) {
+            if (!findAppStack && element.getClassName().startsWith(BuildConfig.APPLICATION_ID)) {
+                findAppStack = true;
+                continue;
+            }
+            if (findAppStack && element.getClassName().startsWith(CloudMusicPackage.PACKAGE_NAME)) {
+                findModStack = true;
+                continue;
+            }
+            if (findModStack && element.getClassName().startsWith(BuildConfig.APPLICATION_ID)) {
                 return true;
             }
         }
         return false;
+    }
+
+    public static void postDelayed(Runnable runnable, long delay) {
+        new android.os.Handler(getMainLooper()).postDelayed(runnable, delay);
     }
 
     static class AlphanumComparator implements Comparator<String> {

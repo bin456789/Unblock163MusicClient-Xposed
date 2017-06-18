@@ -4,7 +4,6 @@ import android.app.Application;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.view.View;
-import android.widget.Toast;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -17,6 +16,7 @@ import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.util.ArrayList;
 import java.util.Collections;
 import java.util.Comparator;
 import java.util.List;
@@ -197,19 +197,6 @@ class CloudMusicPackage {
                 f_singleton = XposedHelpers.findFirstFieldByExactType(NeteaseMusicApplication.getClazz(), NeteaseMusicApplication.getClazz());
 
             return (Application) f_singleton.get(null);
-        }
-
-        static void showToast(final String text) throws IllegalAccessException {
-            final Application application = getApplication();
-            if (application != null) {
-                android.os.Handler h = new android.os.Handler(application.getMainLooper());
-                h.post(new Runnable() {
-                    @Override
-                    public void run() {
-                        Toast.makeText(application, text, Toast.LENGTH_SHORT).show();
-                    }
-                });
-            }
         }
 
 
@@ -557,5 +544,70 @@ class CloudMusicPackage {
             }
             return m_calcMd5;
         }
+    }
+
+    static class E {
+        private static Class clazz;
+        private static Method m_showToastWithContext;
+
+        static Class getClazz() throws IllegalAccessException, IOException, PackageManager.NameNotFoundException {
+            if (clazz == null) {
+                Pattern pattern = Pattern.compile("^com\\.netease\\.cloudmusic\\.[a-z]$");
+                List<String> list = getFilteredClasses(pattern, Collections.<String>reverseOrder());
+                for (String curStr : list) {
+                    Class curClass = XposedHelpers.findClass(curStr, classLoader);
+                    Field[] fields = curClass.getDeclaredFields();
+                    boolean findPattern = false;
+                    boolean findUi = false;
+                    for (Field field : fields) {
+                        if (!findPattern && field.getType().equals(pattern.getClass())) {
+                            findPattern = true;
+                        }
+                        if (!findUi && field.getType().getName().startsWith("com.netease.cloudmusic.ui.")) {
+                            findUi = true;
+                        }
+                        if (findPattern && findUi) {
+                            clazz = curClass;
+                            return clazz;
+                        }
+                    }
+                }
+            }
+            return clazz;
+        }
+
+        static void showToast(final String text) {
+            Utility.postDelayed(new Runnable() {
+                @Override
+                public void run() {
+                    try {
+                        // Toast.makeText(NeteaseMusicApplication.getApplication(), text, Toast.LENGTH_SHORT).show();
+                        E.getShowToastWithContextMethod().invoke(null, null, text);
+                    } catch (Throwable t) {
+                        t.printStackTrace();
+                    }
+                }
+            }, 0);
+        }
+
+        static Method getShowToastWithContextMethod() throws IllegalAccessException, PackageManager.NameNotFoundException, IOException {
+            if (m_showToastWithContext == null) {
+                m_showToastWithContext = findMethodExact(getClazz(), "a", Context.class, String.class);
+            }
+            return m_showToastWithContext;
+        }
+
+        static List<Method> getSuspectedShowToastMethods() throws IllegalAccessException, PackageManager.NameNotFoundException, IOException {
+            List<Method> ret = new ArrayList<>();
+            for (Method method : getClazz().getMethods()) {
+                if (method.getParameterTypes().length == 1
+                        && method.getParameterTypes()[0].equals(String.class)
+                        && Modifier.isStatic(method.getModifiers())) {
+                    ret.add(method);
+                }
+            }
+            return ret;
+        }
+
     }
 }

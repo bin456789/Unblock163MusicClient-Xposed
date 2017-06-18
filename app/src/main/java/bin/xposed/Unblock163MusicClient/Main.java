@@ -10,6 +10,7 @@ import android.view.View;
 import org.xbill.DNS.TextParseException;
 
 import java.io.File;
+import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
@@ -27,6 +28,7 @@ import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
 import static bin.xposed.Unblock163MusicClient.CloudMusicPackage.Mam.findMamClass;
 import static de.robv.android.xposed.XposedBridge.hookAllMethods;
 import static de.robv.android.xposed.XposedBridge.hookMethod;
+import static de.robv.android.xposed.XposedBridge.invokeOriginalMethod;
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
 import static de.robv.android.xposed.XposedHelpers.findAndHookConstructor;
@@ -167,7 +169,7 @@ public class Main implements IXposedHookLoadPackage {
                                                 @Override
                                                 public void onClick(View v) {
                                                     try {
-                                                        XposedBridge.invokeOriginalMethod(param.method, param.thisObject, param.args);
+                                                        invokeOriginalMethod(param.method, param.thisObject, param.args);
                                                     } catch (Throwable t) {
                                                         XposedBridge.log(t);
                                                     }
@@ -350,6 +352,38 @@ public class Main implements IXposedHookLoadPackage {
                             XposedBridge.log(t);
                         }
                     }
+
+                    // toast
+                    for (Method method : CloudMusicPackage.E.getSuspectedShowToastMethods()) {
+                        hookMethod(method, new XC_MethodReplacement() {
+                            long lastShowToastTime = 0;
+
+                            @Override
+                            protected Object replaceHookedMethod(final MethodHookParam param) throws Throwable {
+                                if ("歌曲已存在".equals(param.args[0]) && !Utility.isCallFromMyself())
+                                    return null;
+
+                                long toastLength = 3500;
+                                long between = System.currentTimeMillis() - lastShowToastTime;
+                                long shouldWait = between > toastLength ? 0 : toastLength - between;
+                                lastShowToastTime = System.currentTimeMillis() + shouldWait;
+
+                                Utility.postDelayed(new Runnable() {
+                                    @Override
+                                    public void run() {
+                                        try {
+                                            invokeOriginalMethod(param.method, param.thisObject, param.args);
+                                        } catch (Throwable t) {
+                                            t.printStackTrace();
+                                        }
+                                    }
+                                }, shouldWait);
+
+                                return null;
+                            }
+                        });
+                    }
+
                 }
             });
         }
