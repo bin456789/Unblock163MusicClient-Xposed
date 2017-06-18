@@ -9,8 +9,8 @@ android:
     # https://github.com/travis-ci/travis-ci/issues/6040#issuecomment-219367943
     - tools
     - tools
-    - build-tools-25.0.3
-    - android-25
+    - build-tools-26.0.0
+    - android-26
 
 script:
   - if [[ "${TRAVIS_PULL_REQUEST}" = "false" ]]; then
