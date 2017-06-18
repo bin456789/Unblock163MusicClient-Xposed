@@ -43,7 +43,7 @@ class Handler {
     private static long likePlaylistId = -1;
 
     static boolean isDomainExpired() {
-        return Calendar.getInstance().getTime().after(Handler.DOMAIN_EXPIRED_DATE);
+        return Calendar.getInstance().getTime().after(DOMAIN_EXPIRED_DATE);
     }
 
     static String modifyByRegex(String originalContent) {
@@ -204,11 +204,11 @@ class Handler {
 
 
                 // enhance
-                if (song1 == null) {
+                if (song1 == null || (song1.br < expectBr && song1.br < maxBr)) {
                     try {
                         if (oldSong.code == 404 || ("download".equals(from) && oldSong.code == -110)) {
                         } else {
-                            Song tmp = Handler.getSongByRemoteApiEnhance(oldSong.id, expectBr);
+                            Song tmp = getSongByRemoteApiEnhance(oldSong.id, expectBr);
                             if (tmp.checkAccessible()) {
                                 song1 = tmp;
                             }
@@ -222,11 +222,9 @@ class Handler {
                 // 3rd
                 if (song1 == null || (song1.br < expectBr && song1.br < maxBr)) {
                     try {
-                        if (oldSong.code == 404 || ("download".equals(from) && oldSong.code == -110)) {
-                            Song tmp = Handler.getSongBy3rdApi(oldSong.id, expectBr);
-                            if (tmp.checkAccessible()) {  // fix music size
-                                song3 = tmp;
-                            }
+                        Song tmp = getSongBy3rdApi(oldSong.id, expectBr);
+                        if (tmp.checkAccessible()) {  // fix music size
+                            song3 = tmp;
                         }
                     } catch (Throwable t) {
                         XposedBridge.log("3rd api failed " + oldSong.id);
@@ -342,8 +340,8 @@ class Handler {
     }
 
     private static class DetailApi {
-        long songId;
-        int expectBitrate;
+        final long songId;
+        final int expectBitrate;
 
         int maxBr;
         JSONObject songsJson;
