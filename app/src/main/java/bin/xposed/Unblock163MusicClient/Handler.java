@@ -24,9 +24,8 @@ import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.regex.Pattern;
 
-import de.robv.android.xposed.XposedBridge;
-
 import static bin.xposed.Unblock163MusicClient.CloudMusicPackage.E.showToast;
+import static de.robv.android.xposed.XposedBridge.log;
 
 class Handler {
     static final String XAPI = "http://xmusic.xmusic.top/xapi/v1/";
@@ -96,7 +95,7 @@ class Handler {
                         isModified = true;
                     }
                 } catch (Throwable t) {
-                    t.printStackTrace();
+                    log(t);
                 }
             }
         }
@@ -205,8 +204,8 @@ class Handler {
                         song1 = tmp;
                     }
                 } catch (Throwable t) {
-                    XposedBridge.log("detail api failed " + oldSong.id);
-                    XposedBridge.log(t);
+                    log("detail api failed " + oldSong.id);
+                    log(t);
                 }
 
 
@@ -221,8 +220,8 @@ class Handler {
                             }
                         }
                     } catch (Throwable t) {
-                        XposedBridge.log("songx api failed " + oldSong.id);
-                        XposedBridge.log(t);
+                        log("songx api failed " + oldSong.id);
+                        log(t);
                     }
                 }
 
@@ -234,8 +233,8 @@ class Handler {
                             song3 = tmp;
                         }
                     } catch (Throwable t) {
-                        XposedBridge.log("3rd api failed " + oldSong.id);
-                        XposedBridge.log(t);
+                        log("3rd api failed " + oldSong.id);
+                        log(t);
                     }
                 }
 
@@ -251,8 +250,8 @@ class Handler {
                             song1 = tmp;
                         }
                     } catch (Throwable t) {
-                        XposedBridge.log("detail api failed " + oldSong.id);
-                        XposedBridge.log(t);
+                        log("detail api failed " + oldSong.id);
+                        log(t);
                     }
                 }
 
@@ -296,14 +295,14 @@ class Handler {
                             Utility.deleteFile(file);
                         }
                     } catch (Throwable t) {
-                        XposedBridge.log("read 3rd party tips failed " + oldSong.id);
-                        XposedBridge.log(t);
+                        log("read 3rd party tips failed " + oldSong.id);
+                        log(t);
                     }
                     return true;
                 }
             }
         } catch (Throwable t) {
-            XposedBridge.log(t);
+            log(t);
         }
         return false;
     }
@@ -415,23 +414,19 @@ class Handler {
             }
         }
 
-        Song find(int seq, int minBr) {
+        Song find(int seq, int minBr) throws JSONException {
             List<String> seqList = seq == 1 ? seqList1 : seqList2;
             for (String quality : seqList) {
                 int br = QUALITY_MAP.get(quality);
                 if (br >= minBr && songsJson.has(quality) && !songsJson.isNull(quality)) {
-                    try {
-                        Song song = Song.parseFromDetail(songsJson.getJSONObject(quality), songId, br);
-                        if (song != null && song.url != null) {
-                            if (song.checkAccessible())
-                                return song;
+                    Song song = Song.parseFromDetail(songsJson.getJSONObject(quality), songId, br);
+                    if (song != null && song.url != null) {
+                        if (song.checkAccessible())
+                            return song;
 
-                            song.url = convertPtoM(song.url);
-                            if (song.checkAccessible())
-                                return song;
-                        }
-                    } catch (Throwable t) {
-                        XposedBridge.log(t);
+                        song.url = convertPtoM(song.url);
+                        if (song.checkAccessible())
+                            return song;
                     }
                 }
             }

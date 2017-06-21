@@ -22,13 +22,13 @@ import bin.xposed.Unblock163MusicClient.ui.SettingsActivity;
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
-import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
 
 import static bin.xposed.Unblock163MusicClient.CloudMusicPackage.Mam.findMamClass;
 import static de.robv.android.xposed.XposedBridge.hookAllMethods;
 import static de.robv.android.xposed.XposedBridge.hookMethod;
 import static de.robv.android.xposed.XposedBridge.invokeOriginalMethod;
+import static de.robv.android.xposed.XposedBridge.log;
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
 import static de.robv.android.xposed.XposedHelpers.findAndHookConstructor;
@@ -123,7 +123,7 @@ public class Main implements IXposedHookLoadPackage {
                             }
                         });
                     } catch (Throwable t) {
-                        XposedBridge.log(t);
+                        log(t);
                     }
 
 
@@ -150,7 +150,7 @@ public class Main implements IXposedHookLoadPackage {
                             hookMethod(CloudMusicPackage.Transfer.getCalcMd5Method(), replaceMd5);
                         }
                     } catch (Throwable t) {
-                        XposedBridge.log(t);
+                        log(t);
                     }
 
                     // dislike confirm
@@ -171,7 +171,7 @@ public class Main implements IXposedHookLoadPackage {
                                                     try {
                                                         invokeOriginalMethod(param.method, param.thisObject, param.args);
                                                     } catch (Throwable t) {
-                                                        XposedBridge.log(t);
+                                                        log(t);
                                                     }
                                                 }
                                             });
@@ -181,7 +181,7 @@ public class Main implements IXposedHookLoadPackage {
                                 }
                             });
                         } catch (Throwable t) {
-                            XposedBridge.log(t);
+                            log(t);
                         }
                     }
 
@@ -206,7 +206,7 @@ public class Main implements IXposedHookLoadPackage {
                             }
                         });
                     } catch (Throwable t) {
-                        XposedBridge.log(t);
+                        log(t);
                     }
 
                     // 3rd party
@@ -272,7 +272,7 @@ public class Main implements IXposedHookLoadPackage {
                                     }
                                 });
                     } catch (Throwable t) {
-                        XposedBridge.log(t);
+                        log(t);
                     }
 
                     // 3rd party source tips
@@ -297,14 +297,14 @@ public class Main implements IXposedHookLoadPackage {
                     try {
                         findAndHookMethod(CloudMusicPackage.MusicInfo.getClazz(), "getAppendCopyRight", set3rdStr);
                     } catch (Throwable t) {
-                        XposedBridge.log(t);
+                        log(t);
                     }
 
                     if (CloudMusicPackage.version.compareTo("3.4") >= 0) {
                         try {
                             findAndHookMethod(CloudMusicPackage.MusicInfo.getClazz(), "getThirdTitle", boolean.class, set3rdStr);
                         } catch (Throwable t) {
-                            XposedBridge.log(t);
+                            log(t);
                         }
                     }
 
@@ -334,7 +334,7 @@ public class Main implements IXposedHookLoadPackage {
                                 }
                             });
                         } catch (Throwable t) {
-                            XposedBridge.log(t);
+                            log(t);
                         }
                     }
 
@@ -349,7 +349,7 @@ public class Main implements IXposedHookLoadPackage {
                                 }
                             });
                         } catch (Throwable t) {
-                            XposedBridge.log(t);
+                            log(t);
                         }
                     }
 
@@ -368,17 +368,20 @@ public class Main implements IXposedHookLoadPackage {
                                 long shouldWait = between > toastLength ? 0 : toastLength - between;
                                 lastShowToastTime = System.currentTimeMillis() + shouldWait;
 
-                                Utility.postDelayed(new Runnable() {
-                                    @Override
-                                    public void run() {
-                                        try {
-                                            invokeOriginalMethod(param.method, param.thisObject, param.args);
-                                        } catch (Throwable t) {
-                                            t.printStackTrace();
+                                if (shouldWait > 0) {
+                                    Utility.postDelayed(new Runnable() {
+                                        @Override
+                                        public void run() {
+                                            try {
+                                                invokeOriginalMethod(param.method, param.thisObject, param.args);
+                                            } catch (Throwable t) {
+                                                log(t);
+                                            }
                                         }
-                                    }
-                                }, shouldWait);
-
+                                    }, shouldWait);
+                                } else {
+                                    invokeOriginalMethod(param.method, param.thisObject, param.args);
+                                }
                                 return null;
                             }
                         });

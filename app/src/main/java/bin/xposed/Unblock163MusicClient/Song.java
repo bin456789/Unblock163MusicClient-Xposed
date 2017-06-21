@@ -56,8 +56,8 @@ class Song {
             song.type = "mp3";
             song.url = CloudMusicPackage.NeteaseMusicUtils.generateUrl(fid);
             return song;
-        } else
-            throw new RuntimeException("fid invalid");
+        }
+        return null;
     }
 
     void parseMatchInfo(JSONObject songJson) {
@@ -68,9 +68,9 @@ class Song {
     }
 
     boolean checkAccessible() {
-        String tmpUrl = url;
-        if (tmpUrl != null) {
+        if (url != null) {
             try {
+                String tmpUrl = url;
                 Http http = Http.headByGet(tmpUrl);
                 int responseCode = http.getResponseCode();
                 // manually handle redirection
