@@ -215,6 +215,7 @@ public class Main implements IXposedHookLoadPackage {
                                 "determineRoute", new XC_MethodHook() {
                                     final Class HttpHost = findMamClass(org.apache.http.HttpHost.class);
                                     final Class HttpRequestBase = findMamClass(org.apache.http.client.methods.HttpRequestBase.class);
+                                    final Class HttpGet = findMamClass(org.apache.http.client.methods.HttpGet.class);
                                     final Class HttpRoute = findMamClass(org.apache.http.conn.routing.HttpRoute.class);
                                     final String xapiHost = URI.create(Handler.XAPI).getHost();
 
@@ -229,11 +230,12 @@ public class Main implements IXposedHookLoadPackage {
                                             String host = url.getHost();
 
                                             // 防止 SocketTimeoutException 造成假死
-                                            int timeout = (host.endsWith("163.com") || host.endsWith(xapiHost)) ? 10000 : 3000;
-                                            Object requestParams = callMethod(callMethod(paramHttpRequest, "getParams"), "getRequestParams");
-                                            callMethod(requestParams, "setParameter", "http.socket.timeout", timeout);
+                                            if (!host.endsWith("163.com") && HttpGet.isInstance(originalHttpRequest)) {
+                                                Object requestParams = callMethod(callMethod(paramHttpRequest, "getParams"), "getRequestParams");
+                                                callMethod(requestParams, "setParameter", "http.socket.timeout", 4000);
+                                            }
 
-                                            if (host.endsWith("126.net") || host.endsWith("163.com"))
+                                            if (host.endsWith("126.net") || host.endsWith("127.net") || host.endsWith("163.com"))
                                                 return;
 
                                             // cookie 处理
