@@ -26,6 +26,7 @@ import java.util.regex.Pattern;
 
 import de.robv.android.xposed.XposedHelpers;
 
+import static de.robv.android.xposed.XposedBridge.log;
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
 import static de.robv.android.xposed.XposedHelpers.findClass;
@@ -584,7 +585,7 @@ class CloudMusicPackage {
                         // Toast.makeText(NeteaseMusicApplication.getApplication(), text, Toast.LENGTH_SHORT).show();
                         E.getShowToastWithContextMethod().invoke(null, null, text);
                     } catch (Throwable t) {
-                        t.printStackTrace();
+                        log(t);
                     }
                 }
             }, 0);
@@ -602,6 +603,7 @@ class CloudMusicPackage {
             for (Method method : getClazz().getMethods()) {
                 if (method.getParameterTypes().length == 1
                         && method.getParameterTypes()[0].equals(String.class)
+                        && method.getReturnType() == Void.TYPE
                         && Modifier.isStatic(method.getModifiers())) {
                     ret.add(method);
                 }
