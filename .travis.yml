@@ -6,9 +6,8 @@ jdk:
 
 android:
   components:
-    # https://github.com/travis-ci/travis-ci/issues/6040#issuecomment-219367943
     - tools
-    - tools
+    - platform-tools
     - build-tools-26.0.2
     - android-26
 
@@ -24,13 +23,14 @@ script:
 
 before_deploy:
   - cp app/build/outputs/apk/*-release.apk .
-  - export APK_PATH=$(ls *-release.apk)
+  - export APK_PATH=$(ls -d -1 $PWD/*-release.apk)
 
 deploy:
   provider: releases
   api_key:
     secure: $GITHUB_TOKEN
   file: $APK_PATH
+  skip_cleaup: true
   overwrite: true
   on:
     tags: true
