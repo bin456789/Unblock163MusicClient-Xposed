@@ -7,14 +7,19 @@ import android.text.SpannableString;
 import android.text.TextUtils;
 import android.view.View;
 
+import org.apache.http.params.CoreConnectionPNames;
+import org.json.JSONObject;
 import org.xbill.DNS.TextParseException;
 
 import java.io.File;
+import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.net.URI;
 import java.net.URISyntaxException;
 import java.net.UnknownHostException;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -22,6 +27,7 @@ import bin.xposed.Unblock163MusicClient.ui.SettingsActivity;
 import de.robv.android.xposed.IXposedHookLoadPackage;
 import de.robv.android.xposed.XC_MethodHook;
 import de.robv.android.xposed.XC_MethodReplacement;
+import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.callbacks.XC_LoadPackage.LoadPackageParam;
 
 import static bin.xposed.Unblock163MusicClient.CloudMusicPackage.Mam.findMamClass;
@@ -31,9 +37,9 @@ import static de.robv.android.xposed.XposedBridge.invokeOriginalMethod;
 import static de.robv.android.xposed.XposedBridge.log;
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
-import static de.robv.android.xposed.XposedHelpers.findAndHookConstructor;
 import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
 import static de.robv.android.xposed.XposedHelpers.findClass;
+import static de.robv.android.xposed.XposedHelpers.findMethodExact;
 import static de.robv.android.xposed.XposedHelpers.getObjectField;
 import static de.robv.android.xposed.XposedHelpers.newInstance;
 
@@ -59,73 +65,94 @@ public class Main implements IXposedHookLoadPackage {
                     CloudMusicPackage.init((Context) param.thisObject);
 
                     // main
-                    findAndHookMethod(CloudMusicPackage.HttpEapi.getClazz(), "a", String.class, new XC_MethodHook() {
-                        @Override
-                        protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                            String original = (String) param.getResult();
-                            if (TextUtils.isEmpty(original))
-                                return;
+                    for (Method m : CloudMusicPackage.HttpEapi.getRawStringMethods())
+                        XposedBridge.hookMethod(m, new XC_MethodHook() {
+                            @Override
+                            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                                if ((!(param.getResult() instanceof String) && !(param.getResult() instanceof JSONObject)))
+                                    return;
 
-                            String path = new CloudMusicPackage.HttpEapi(param.thisObject).getPath();
-                            String modified = null;
-                            if (path.startsWith("batch")
-                                    || path.startsWith("album/privilege")
-                                    || path.startsWith("artist/privilege")
-                                    || path.startsWith("playlist/privilege")
-                                    || path.startsWith("song/enhance/privilege")
-                                    || path.startsWith("v1/artist")
-                                    || path.startsWith("v1/album")
-                                    || path.startsWith("v1/discovery/new/songs")
-                                    || path.startsWith("v1/discovery/recommend/songs")
-                                    || path.startsWith("v1/play/record")
-                                    || path.startsWith("v1/search/get")
-                                    || path.startsWith("v3/playlist/detail")
-                                    || path.startsWith("v3/song/detail")) {
-                                modified = Handler.modifyByRegex(original);
+                                String original = param.getResult().toString();
+                                if (TextUtils.isEmpty(original))
+                                    return;
 
-                                if (path.startsWith("batch")) {
-                                    Handler.cacheLikePlaylistId(original, param.thisObject);
+                                String path = new CloudMusicPackage.HttpEapi(param.thisObject).getPath();
+                                String modified = null;
+
+                                if (path.startsWith("song/enhance/player/url")) {
+                                    modified = Handler.modifyPlayerOrDownloadApi(original, param.thisObject, "player");
+
+                                } else if (path.startsWith("song/enhance/download/url")) {
+                                    modified = Handler.modifyPlayerOrDownloadApi(original, param.thisObject, "download");
+
+                                } else if (path.startsWith("v1/playlist/manipulate/tracks")) {
+                                    modified = Handler.modifyPlaylistManipulateApi(original, param.thisObject);
+
+                                } else if (path.startsWith("song/like")) {
+                                    modified = Handler.modifyLike(original, param.thisObject);
+
+                                } else if (path.startsWith("cloud/pub/v2")) {
+                                    modified = Handler.modifyPub(original, param.thisObject);
+
+                                } else if (path.contains("batch")
+                                        || path.contains("album")
+                                        || path.contains("artist")
+                                        || path.contains("play")
+                                        || path.contains("song")
+                                        || path.contains("search")) {
+                                    modified = Handler.modifyByRegex(original);
                                 }
 
-                            } else if (path.startsWith("song/enhance/player/url")) {
-                                modified = Handler.modifyPlayerOrDownloadApi(original, param.thisObject, "player");
-
-                            } else if (path.startsWith("song/enhance/download/url")) {
-                                modified = Handler.modifyPlayerOrDownloadApi(original, param.thisObject, "download");
-
-                            } else if (path.startsWith("v1/playlist/manipulate/tracks")) {
-                                modified = Handler.modifyPlaylistManipulateApi(original, param.thisObject);
-
-                            } else if (path.startsWith("song/like")) {
-                                modified = Handler.modifyLike(original, param.thisObject);
-
-                            } else if (path.startsWith("cloud/pub/v2")) {
-                                modified = Handler.modifyPub(original, param.thisObject);
-
+                                if (modified != null) {
+                                    param.setResult(param.getResult() instanceof JSONObject ? new JSONObject(modified) : modified);
+                                }
                             }
+                        });
 
-                            if (modified != null) {
-                                param.setResult(modified);
+
+                    // ctmus 如果有 Referer 则返回404
+                    if (CloudMusicPackage.HttpEapi.isUseOkHttp()) {
+                        Method addHeaderMethod = findMethodExact(CloudMusicPackage.HttpEapi.getClazz(), "a", String.class, String.class);
+                        hookMethod(addHeaderMethod, new XC_MethodHook() {
+                            @Override
+                            protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
+                                if ("Referer".equals(param.args[0])) {
+                                    String path = new CloudMusicPackage.HttpEapi(param.thisObject).getPath();
+                                    String host = URI.create(path).getHost();
+                                    if (host.contains("qq")
+                                            || host.contains("xiami")
+                                            || host.contains("alicdn")
+                                            || host.contains("ctmus")) {
+                                        param.setResult(param.thisObject);
+                                    }
+                                }
                             }
-                        }
-                    });
+                        });
+                    }
 
 
                     // save latest post data
                     try {
-                        findAndHookConstructor(CloudMusicPackage.HttpEapi.getClazz(), String.class, Map.class, String.class, boolean.class, new XC_MethodHook() {
-                            @SuppressWarnings("unchecked")
-                            @Override
-                            protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                                CloudMusicPackage.HttpEapi httpEapi = new CloudMusicPackage.HttpEapi(param.thisObject);
-                                httpEapi.setPath((String) param.args[0]);
-                                httpEapi.setRequestMap((Map<String, String>) param.args[1]);
-                            }
-                        });
+                        for (Member m : CloudMusicPackage.HttpEapi.getConstructor()) {
+                            hookMethod(m, new XC_MethodHook() {
+                                @SuppressWarnings("unchecked")
+                                @Override
+                                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                                    CloudMusicPackage.HttpEapi httpEapi = new CloudMusicPackage.HttpEapi(param.thisObject);
+                                    if (param.args[0] instanceof String) {
+                                        httpEapi.setPath((String) param.args[0]);
+                                    }
+                                    for (int i = 0; i < param.args.length && i < 2; i++) {
+                                        if (param.args[i] instanceof Map) {
+                                            httpEapi.setRequestMap((Map<String, String>) param.args[i]);
+                                        }
+                                    }
+                                }
+                            });
+                        }
                     } catch (Throwable t) {
                         log(t);
                     }
-
 
                     // replace md5
                     XC_MethodHook replaceMd5 = new XC_MethodHook() {
@@ -144,7 +171,7 @@ public class Main implements IXposedHookLoadPackage {
                     };
 
                     try {
-                        if (CloudMusicPackage.version.startsWith("3")) {
+                        if (CloudMusicPackage.getVersion().startsWith("3")) {
                             findAndHookMethod(CloudMusicPackage.NeteaseMusicUtils.getClazz(), "a", String.class, replaceMd5);
                         } else {
                             hookMethod(CloudMusicPackage.Transfer.getCalcMd5Method(), replaceMd5);
@@ -211,68 +238,62 @@ public class Main implements IXposedHookLoadPackage {
 
                     // 3rd party
                     try {
-                        hookAllMethods(findClass(CloudMusicPackage.HttpEapi.getClazz().getPackage().getName() + ".a$1", lpparam.classLoader),
-                                "determineRoute", new XC_MethodHook() {
-                                    final Class HttpHost = findMamClass(org.apache.http.HttpHost.class);
-                                    final Class HttpRequestBase = findMamClass(org.apache.http.client.methods.HttpRequestBase.class);
-                                    final Class HttpGet = findMamClass(org.apache.http.client.methods.HttpGet.class);
-                                    final Class HttpRoute = findMamClass(org.apache.http.conn.routing.HttpRoute.class);
-                                    final String xapiHost = URI.create(Handler.XAPI).getHost();
+                        if (!CloudMusicPackage.HttpEapi.isUseOkHttp())
+                            hookAllMethods(findClass(CloudMusicPackage.HttpEapi.getClazz().getPackage().getName() + ".a$1", lpparam.classLoader),
+                                    "determineRoute", new XC_MethodHook() {
+                                        final Class HttpHost = findMamClass(org.apache.http.HttpHost.class);
+                                        final Class HttpGet = findMamClass(org.apache.http.client.methods.HttpGet.class);
+                                        final Class HttpRoute = findMamClass(org.apache.http.conn.routing.HttpRoute.class);
 
-                                    @Override
-                                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                                        Object paramHttpRequest = param.args[1];
-                                        Object originalHttpRequest = callMethod(paramHttpRequest, "getOriginal");
-                                        Object resultHttpRoute = param.getResult();
+                                        @Override
+                                        protected void afterHookedMethod(MethodHookParam param) throws Throwable {
+                                            Object paramHttpRequest = param.args[1];
+                                            Object originalHttpRequest = callMethod(paramHttpRequest, "getOriginal");
+                                            Object resultHttpRoute = param.getResult();
 
-                                        if (HttpRequestBase.isInstance(originalHttpRequest)) {
-                                            URI url = (URI) callMethod(originalHttpRequest, "getURI");
-                                            String host = url.getHost();
+                                            if (HttpGet.isInstance(originalHttpRequest)) {
+                                                // 防止 SocketTimeoutException 造成假死
+                                                Object rangeHeader = callMethod(originalHttpRequest, "getFirstHeader", "Range");
+                                                if (rangeHeader != null) {
+                                                    Object requestParams = callMethod(callMethod(paramHttpRequest, "getParams"), "getRequestParams");
+                                                    callMethod(requestParams, "setParameter", CoreConnectionPNames.SO_TIMEOUT, 5000);
+                                                }
 
-                                            // 防止 SocketTimeoutException 造成假死
-                                            if (!host.endsWith("163.com") && HttpGet.isInstance(originalHttpRequest)) {
-                                                Object requestParams = callMethod(callMethod(paramHttpRequest, "getParams"), "getRequestParams");
-                                                callMethod(requestParams, "setParameter", "http.socket.timeout", 4000);
-                                            }
+                                                URI url = (URI) callMethod(originalHttpRequest, "getURI");
+                                                String host = url.getHost();
 
-                                            if (host.endsWith("126.net") || host.endsWith("127.net") || host.endsWith("163.com"))
-                                                return;
+                                                if (host.endsWith("126.net") || host.endsWith("127.net") || host.endsWith("163.com"))
+                                                    return;
 
-                                            // cookie 处理
-                                            if (host.endsWith(xapiHost)) {
-                                                // 需要发送cookie到自己的服务器
-                                                String cookieString = String.format("modver=%s;%s", BuildConfig.VERSION_NAME, CloudMusicPackage.HttpEapi.getDefaultCookie());
-                                                callMethod(originalHttpRequest, "setHeader", "Cookie", cookieString);
-                                            } else {
+                                                // cookie 处理
                                                 // 避免发送网易cookie到xiami, qq ...
                                                 callMethod(originalHttpRequest, "removeHeaders", "Cookie");
                                                 callMethod(originalHttpRequest, "removeHeaders", "Referer");
-                                            }
 
-                                            // 避免开通联通流量包后听不了
-                                            if (callMethod(resultHttpRoute, "getProxyHost") != null) {
-                                                if (host.endsWith("xiami.com") || (host.endsWith("alicdn.com"))) {
-                                                    callMethod(originalHttpRequest, "setHeader", "Authorization", "Basic MzAwMDAwNDU5MDpGRDYzQTdBNTM0NUMxMzFF");
-                                                } else if (host.endsWith("qq.com")) {
-                                                    callMethod(originalHttpRequest, "removeHeaders", "Authorization");
-                                                    callMethod(paramHttpRequest, "setURI", URI.create(url.toString().replace("http:/", "")));
-                                                    Object newHttpHost = newInstance(HttpHost, "gd.unicommusic.gtimg.com", 8080);
-                                                    Object newHttpRoute = newInstance(HttpRoute, newHttpHost, null, false);
-                                                    param.setResult(newHttpRoute);
-                                                } else if (host.endsWith("imusicapp.cn")) {
-                                                    // do nothing for now
-                                                } else {
-                                                    // remove proxy
-                                                    callMethod(originalHttpRequest, "removeHeaders", "Authorization");
-                                                    callMethod(paramHttpRequest, "setURI", URI.create(url.getPath()));
-                                                    Object newHttpHost = newInstance(HttpHost, host);
-                                                    Object newHttpRoute = newInstance(HttpRoute, newHttpHost, null, false);
-                                                    param.setResult(newHttpRoute);
+                                                // 避免开通联通流量包后听不了
+                                                if (callMethod(resultHttpRoute, "getProxyHost") != null) {
+                                                    if (host.contains("xiami") || host.contains("alicdn")) {
+                                                        callMethod(originalHttpRequest, "setHeader", "Authorization", "Basic MzAwMDAwNDU5MDpGRDYzQTdBNTM0NUMxMzFF");
+                                                    } else if (host.contains("qq")) {
+                                                        callMethod(originalHttpRequest, "removeHeaders", "Authorization");
+                                                        callMethod(paramHttpRequest, "setURI", URI.create(url.toString().replace("http:/", "")));
+                                                        Object newHttpHost = newInstance(HttpHost, "gd.unicommusic.gtimg.com", 8080);
+                                                        Object newHttpRoute = newInstance(HttpRoute, newHttpHost, null, false);
+                                                        param.setResult(newHttpRoute);
+                                                    } else if (host.contains("imusicapp")) {
+                                                        // do nothing for now
+                                                    } else {
+                                                        // remove proxy
+                                                        callMethod(originalHttpRequest, "removeHeaders", "Authorization");
+                                                        callMethod(paramHttpRequest, "setURI", URI.create(url.getPath()));
+                                                        Object newHttpHost = newInstance(HttpHost, host);
+                                                        Object newHttpRoute = newInstance(HttpRoute, newHttpHost, null, false);
+                                                        param.setResult(newHttpRoute);
+                                                    }
                                                 }
                                             }
                                         }
-                                    }
-                                });
+                                    });
                     } catch (Throwable t) {
                         log(t);
                     }
@@ -302,7 +323,7 @@ public class Main implements IXposedHookLoadPackage {
                         log(t);
                     }
 
-                    if (CloudMusicPackage.version.compareTo("3.4") >= 0) {
+                    if (CloudMusicPackage.getVersion().compareTo("3.4") >= 0) {
                         try {
                             findAndHookMethod(CloudMusicPackage.MusicInfo.getClazz(), "getThirdTitle", boolean.class, set3rdStr);
                         } catch (Throwable t) {
@@ -312,29 +333,35 @@ public class Main implements IXposedHookLoadPackage {
 
 
                     // oversea mode
-                    if (Settings.isOverseaModeEnabled()) {
+                    if (!CloudMusicPackage.HttpEapi.isUseOkHttp() && Settings.isOverseaModeEnabled()) {
                         try {
-                            final Class AbstractHttpClient = findMamClass(org.apache.http.impl.client.AbstractHttpClient.class);
-                            final Class HttpUriRequest = findMamClass(org.apache.http.client.methods.HttpUriRequest.class);
-                            final Class HttpRequestBase = findMamClass(org.apache.http.client.methods.HttpRequestBase.class);
+                            Set<String> prefixes = new HashSet<>();
+                            prefixes.add("");
+                            prefixes.add(CloudMusicPackage.Mam.getPrefix());
 
-                            findAndHookMethod(AbstractHttpClient, "execute", HttpUriRequest, new XC_MethodHook() {
-                                @Override
-                                protected void beforeHookedMethod(MethodHookParam param) throws URISyntaxException, TextParseException, UnknownHostException {
-                                    if (HttpRequestBase.isInstance(param.args[0])) {
-                                        Object httpRequestBase = param.args[0];
-                                        URI uri = (URI) callMethod(httpRequestBase, "getURI");
-                                        String host = uri.getHost();
-                                        // solve server ip point to 1.1.1.1
-                                        if ("m2.music.126.net".equals(host)) {
-                                            String ip = Utility.getIpByHost(host);
-                                            URI newUrl = new URI(uri.getScheme(), uri.getUserInfo(), ip, uri.getPort(), uri.getRawPath(), uri.getRawQuery(), uri.getRawFragment());
-                                            callMethod(httpRequestBase, "setURI", newUrl);
-                                            callMethod(httpRequestBase, "setHeader", "Host", host);
+                            for (String prefix : prefixes) {
+                                final Class AbstractHttpClient = findClass(prefix + org.apache.http.impl.client.AbstractHttpClient.class.getName(), lpparam.classLoader);
+                                final Class HttpUriRequest = findClass(prefix + org.apache.http.client.methods.HttpUriRequest.class.getName(), lpparam.classLoader);
+                                final Class HttpRequestBase = findClass(prefix + org.apache.http.client.methods.HttpRequestBase.class.getName(), lpparam.classLoader);
+
+                                findAndHookMethod(AbstractHttpClient, "execute", HttpUriRequest, new XC_MethodHook() {
+                                    @Override
+                                    protected void beforeHookedMethod(MethodHookParam param) throws URISyntaxException, TextParseException, UnknownHostException {
+                                        if (HttpRequestBase.isInstance(param.args[0])) {
+                                            Object httpRequestBase = param.args[0];
+                                            URI uri = (URI) callMethod(httpRequestBase, "getURI");
+                                            String host = uri.getHost();
+                                            // solve server ip point to 1.1.1.1
+                                            if ("m2.music.126.net".equals(host)) {
+                                                String ip = Utility.getIpByHost(host);
+                                                URI newUrl = new URI(uri.getScheme(), uri.getUserInfo(), ip, uri.getPort(), uri.getRawPath(), uri.getRawQuery(), uri.getRawFragment());
+                                                callMethod(httpRequestBase, "setURI", newUrl);
+                                                callMethod(httpRequestBase, "setHeader", "Host", host);
+                                            }
                                         }
                                     }
-                                }
-                            });
+                                });
+                            }
                         } catch (Throwable t) {
                             log(t);
                         }
@@ -356,39 +383,40 @@ public class Main implements IXposedHookLoadPackage {
                     }
 
                     // toast
-                    for (Method method : CloudMusicPackage.E.getSuspectedShowToastMethods()) {
-                        hookMethod(method, new XC_MethodReplacement() {
-                            long lastShowToastTime = 0;
+                    if (false) {
+                        for (Method method : CloudMusicPackage.E.getSuspectedShowToastMethods()) {
+                            hookMethod(method, new XC_MethodReplacement() {
+                                long lastShowToastTime = 0;
 
-                            @Override
-                            protected Object replaceHookedMethod(final MethodHookParam param) throws Throwable {
-                                if ("歌曲已存在".equals(param.args[0]) && !Utility.isCallFromMyself())
-                                    return null;
+                                @Override
+                                protected Object replaceHookedMethod(final MethodHookParam param) throws Throwable {
+                                    if ("歌曲已存在".equals(param.args[0]) && !Utility.isCallFromMyself())
+                                        return null;
 
-                                long toastLength = 3500;
-                                long between = System.currentTimeMillis() - lastShowToastTime;
-                                long shouldWait = between > toastLength ? 0 : toastLength - between;
-                                lastShowToastTime = System.currentTimeMillis() + shouldWait;
+                                    long toastLength = 3500;
+                                    long between = System.currentTimeMillis() - lastShowToastTime;
+                                    long shouldWait = between > toastLength ? 0 : toastLength - between;
+                                    lastShowToastTime = System.currentTimeMillis() + shouldWait;
 
-                                if (shouldWait > 0) {
-                                    Utility.postDelayed(new Runnable() {
-                                        @Override
-                                        public void run() {
-                                            try {
-                                                invokeOriginalMethod(param.method, param.thisObject, param.args);
-                                            } catch (Throwable t) {
-                                                log(t);
+                                    if (shouldWait > 0) {
+                                        Utility.postDelayed(new Runnable() {
+                                            @Override
+                                            public void run() {
+                                                try {
+                                                    invokeOriginalMethod(param.method, param.thisObject, param.args);
+                                                } catch (Throwable t) {
+                                                    log(t);
+                                                }
                                             }
-                                        }
-                                    }, shouldWait);
-                                } else {
-                                    invokeOriginalMethod(param.method, param.thisObject, param.args);
+                                        }, shouldWait);
+                                    } else {
+                                        invokeOriginalMethod(param.method, param.thisObject, param.args);
+                                    }
+                                    return null;
                                 }
-                                return null;
-                            }
-                        });
+                            });
+                        }
                     }
-
                 }
             });
         }

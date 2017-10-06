@@ -28,8 +28,8 @@ import static bin.xposed.Unblock163MusicClient.CloudMusicPackage.E.showToast;
 import static de.robv.android.xposed.XposedBridge.log;
 
 class Handler {
-    static final String XAPI = "http://xmusic.xmusic.top/xapi/v1/";
-    private static final Date DOMAIN_EXPIRED_DATE = new GregorianCalendar(2017, 10 - 1, 1).getTime();
+    private static final String XAPI = "http://xmusic.xmusic.top/xapi/v1/";
+    private static final Date DOMAIN_EXPIRED_DATE = new GregorianCalendar(2018, 10 - 1, 1).getTime();
     private static final Pattern REX_PL = Pattern.compile("\"pl\":(?!999000)\\d+");
     private static final Pattern REX_DL = Pattern.compile("\"dl\":(?!999000)\\d+");
     private static final Pattern REX_SUBP = Pattern.compile("\"subp\":\\d+");
@@ -41,7 +41,6 @@ class Handler {
         }
     };
     private static final ExecutorService handlerPool = Executors.newCachedThreadPool();
-    private static long likePlaylistId = -1;
 
     static boolean isDomainExpired() {
         return Calendar.getInstance().getTime().after(DOMAIN_EXPIRED_DATE);
@@ -115,7 +114,7 @@ class Handler {
         } else if (code != 200) {
             @SuppressWarnings({"unchecked"})
             Map<String, String> requestMap = new CloudMusicPackage.HttpEapi(eapiObj).getRequestMap();
-            String raw = Http.post(XAPI + "manipulate", requestMap).getResponseText();
+            String raw = Http.post(XAPI + "manipulate", requestMap, true).getResponseText();
             JSONObject json = new JSONObject(raw);
             int xcode = json.optInt("code");
             if (xcode == 401 || xcode == 512) {
@@ -131,14 +130,10 @@ class Handler {
         JSONObject originalJson = new JSONObject(originalContent);
         int code = originalJson.getInt("code");
         if (code != 200) {
-            if (likePlaylistId == -1) {
-                CloudMusicPackage.CAC.refreshMyPlaylist();
-            }
             String likeString = new CloudMusicPackage.HttpEapi(eapiObj).getPath();
             String query = URI.create(likeString).getQuery();
             Map<String, String> dataMap = Utility.queryToMap(query);
-            dataMap.put("playlistId", String.valueOf(likePlaylistId));
-            String raw = Http.post(XAPI + "like", dataMap).getResponseText();
+            String raw = Http.post(XAPI + "like", dataMap, true).getResponseText();
             if (Utility.isJSONValid(raw)) {
                 return raw;
             }
@@ -147,23 +142,13 @@ class Handler {
         return originalContent;
     }
 
-    static void cacheLikePlaylistId(String originalContent, Object eapiObj) throws JSONException {
-        String api = "/api/user/playlist";
-        if (new CloudMusicPackage.HttpEapi(eapiObj).getRequestMap().containsKey(api)) {
-            likePlaylistId = new JSONObject(originalContent)
-                    .getJSONObject(api)
-                    .getJSONArray("playlist")
-                    .getJSONObject(0).getLong("id");
-        }
-    }
-
     static String modifyPub(String originalContent, Object eapiObj) throws Throwable {
         JSONObject originalJson = new JSONObject(originalContent);
         int code = originalJson.getInt("code");
         if (code != 200) {
             @SuppressWarnings({"unchecked"})
             Map<String, String> requestMap = new CloudMusicPackage.HttpEapi(eapiObj).getRequestMap();
-            String raw = Http.post(XAPI + "pub", requestMap).getResponseText();
+            String raw = Http.post(XAPI + "pub", requestMap, true).getResponseText();
             if (Utility.isJSONValid(raw)) {
                 return raw;
             }
@@ -313,7 +298,7 @@ class Handler {
             put("br", String.valueOf(expectBitrate));
             put("withHQ", "1");
         }};
-        String raw = Http.post(XAPI + "song", map).getResponseText();
+        String raw = Http.post(XAPI + "song", map, true).getResponseText();
         JSONObject json = new JSONObject(raw).getJSONObject("data");
         return Song.parseFromOther(json);
     }
@@ -323,7 +308,7 @@ class Handler {
             put("id", String.valueOf(songId));
             put("br", String.valueOf(expectBitrate));
         }};
-        String raw = Http.post(XAPI + "songx", map).getResponseText();
+        String raw = Http.post(XAPI + "songx", map, true).getResponseText();
         JSONObject json = new JSONObject(raw).getJSONObject("data");
         return Song.parseFromOther(json);
     }
@@ -333,7 +318,7 @@ class Handler {
             put("id", String.valueOf(songId));
             put("br", String.valueOf(expectBitrate));
         }};
-        String raw = Http.post(XAPI + "3rd/match", map).getResponseText();
+        String raw = Http.post(XAPI + "3rd/match", map, true).getResponseText();
         JSONObject json = new JSONObject(raw).getJSONObject("data");
         return Song.parseFromOther(json);
     }
@@ -395,9 +380,7 @@ class Handler {
             JSONArray c = new JSONArray().put(new JSONObject().put("id", songId).put("v", 0));
             map.put("c", c.toString());
 
-            String page = false
-                    ? CloudMusicPackage.HttpEapi.post("v3/song/detail", map).getResponseText() // can't get fid
-                    : Http.post(XAPI + "detail", map).getResponseText();
+            String page = Http.post(XAPI + "detail", map, true).getResponseText();
             JSONObject detailJson = new JSONObject(page);
             songsJson = detailJson.getJSONArray("songs").getJSONObject(0);
         }

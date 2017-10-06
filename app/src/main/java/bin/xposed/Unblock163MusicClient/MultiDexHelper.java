@@ -14,6 +14,8 @@ import java.util.List;
 
 import dalvik.system.DexFile;
 
+import static de.robv.android.xposed.XposedBridge.log;
+
 /**
  * Created by xudshen@hotmail.com on 14/11/13.
  * http://stackoverflow.com/questions/26623905/android-multidex-list-all-classes
@@ -43,9 +45,8 @@ class MultiDexHelper {
      * @param context the application context
      * @return all the dex path
      * @throws PackageManager.NameNotFoundException
-     * @throws IOException
      */
-    private static List<String> getSourcePaths(Context context) throws PackageManager.NameNotFoundException, IOException {
+    private static List<String> getSourcePaths(Context context) throws PackageManager.NameNotFoundException {
         ApplicationInfo applicationInfo = context.getPackageManager().getApplicationInfo(context.getPackageName(), 0);
         File sourceApk = new File(applicationInfo.sourceDir);
         File dexDir = new File(applicationInfo.dataDir, SECONDARY_FOLDER_NAME);
@@ -66,7 +67,7 @@ class MultiDexHelper {
                 sourcePaths.add(extractedFile.getAbsolutePath());
                 //we ignore the verify zip part
             } else {
-                throw new IOException("Missing extracted secondary dex file '" +
+                log("Missing extracted secondary dex file '" +
                         extractedFile.getPath() + "'");
             }
         }
@@ -80,9 +81,8 @@ class MultiDexHelper {
      * @param context the application context
      * @return all the classes name
      * @throws PackageManager.NameNotFoundException
-     * @throws IOException
      */
-    static List<String> getAllClasses(Context context) throws PackageManager.NameNotFoundException, IOException {
+    static List<String> getAllClasses(Context context) throws PackageManager.NameNotFoundException {
         List<String> classNames = new ArrayList<>();
         for (String path : getSourcePaths(context)) {
             try {
@@ -102,7 +102,7 @@ class MultiDexHelper {
                 if (pathTmp != null)
                     Utility.deleteFile(new File(pathTmp));
             } catch (IOException e) {
-                throw new IOException("Error at loading dex file '" +
+                log("Error at loading dex file '" +
                         path + "'");
             }
         }

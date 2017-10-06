@@ -5,9 +5,8 @@ import org.json.JSONObject;
 
 import java.util.Locale;
 
-import de.robv.android.xposed.XposedBridge;
-
 import static bin.xposed.Unblock163MusicClient.Utility.optString;
+import static de.robv.android.xposed.XposedBridge.log;
 
 class Song {
     long id;
@@ -70,23 +69,15 @@ class Song {
     boolean checkAccessible() {
         if (url != null) {
             try {
-                String tmpUrl = url;
-                Http http = Http.headByGet(tmpUrl);
-                int responseCode = http.getResponseCode();
-                // manually handle redirection
-                while (responseCode == 301 || responseCode == 302) {
-                    tmpUrl = http.getRedirectLocation();
-                    http = Http.headByGet(tmpUrl);
-                    responseCode = http.getResponseCode();
-                }
-                if (responseCode >= 200 && responseCode < 400) {
-                    size = http.getFileSize(); // re-calc music size for 3rd party url
-                    url = tmpUrl;
+                Http h = Http.headByGet(url, false);
+                if (h.getResponseCode() == 200 || h.getResponseCode() == 206) {
+                    url = h.getFinalLocation();
+                    size = h.getContentLength(); // re-calc music size for 3rd party url
                     return true;
                 }
             } catch (Throwable t) {
-                XposedBridge.log(id + "\n" + br + "\n" + url);
-                XposedBridge.log(t);
+                log(id + "\n" + br + "\n" + url);
+                log(t);
             }
         }
         return false;

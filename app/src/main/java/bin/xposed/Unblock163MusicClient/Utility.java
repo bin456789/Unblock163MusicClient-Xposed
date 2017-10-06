@@ -78,6 +78,10 @@ public class Utility {
     }
 
     static String serialData(Map<String, String> dataMap) throws UnsupportedEncodingException {
+        if (dataMap == null) {
+            return "";
+        }
+
         StringBuilder result = new StringBuilder();
         boolean first = true;
 
