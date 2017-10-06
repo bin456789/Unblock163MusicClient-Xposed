@@ -22,8 +22,9 @@ script:
 
 
 before_deploy:
-  - cp app/build/outputs/apk/*-release.apk .
-  - export APK_PATH=$(ls -d -1 $PWD/*-release.apk)
+  - cp app/build/outputs/apk/*-release.apk ~
+  - export APK_PATH=$(ls -d -1 ~/*-release.apk)
+  - echo $APK_PATH
 
 deploy:
   provider: releases
