@@ -63,11 +63,13 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
             if (getPackageManager().queryIntentActivities(intent, 0).isEmpty()) {
                 intent = getPackageManager().getLaunchIntentForPackage("de.robv.android.xposed.installer");
             }
-            intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
-                    .putExtra("section", "modules")
-                    .putExtra("fragment", 1)
-                    .putExtra("module", BuildConfig.APPLICATION_ID);
-            startActivity(intent);
+            if (intent != null) {
+                intent.setFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+                        .putExtra("section", "modules")
+                        .putExtra("fragment", 1)
+                        .putExtra("module", BuildConfig.APPLICATION_ID);
+                startActivity(intent);
+            }
         } else {
             Toast.makeText(this, R.string.xposed_installer_not_installed, Toast.LENGTH_SHORT).show();
         }
@@ -75,7 +77,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 
     private void checkIcon() {
         if (Utility.isAppInstalled(this, "de.robv.android.xposed.installer")) {
-            final ComponentName aliasName = new ComponentName(this, SettingsActivity.this.getClass().getName() + "-Alias");
+            final ComponentName aliasName = new ComponentName(this, SettingsActivity.this.getClass().getName() + "Alias");
             final PackageManager packageManager = getPackageManager();
             if (packageManager.getComponentEnabledSetting(aliasName) != PackageManager.COMPONENT_ENABLED_STATE_DISABLED) {
                 new AlertDialog.Builder(this)

@@ -29,6 +29,7 @@ import java.util.regex.Pattern;
 
 import de.robv.android.xposed.XposedHelpers;
 
+import static bin.xposed.Unblock163MusicClient.CloudMusicPackage.ClassHelper.getFilteredClasses;
 import static de.robv.android.xposed.XposedBridge.log;
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
@@ -56,33 +57,35 @@ class CloudMusicPackage {
         HttpEapi.init();
     }
 
-    private static List<String> getAllClasses() throws IllegalAccessException, PackageManager.NameNotFoundException {
-        List<String> list = allClassList.get();
-        if (list == null || list.isEmpty()) {
-            list = MultiDexHelper.getAllClasses(NeteaseMusicApplication.getApplication());
-            allClassList = new WeakReference<>(list);
+    static class ClassHelper {
+        static List<String> getAllClasses() throws IllegalAccessException, PackageManager.NameNotFoundException {
+            List<String> list = allClassList.get();
+            if (list == null || list.isEmpty()) {
+                list = MultiDexHelper.getAllClasses(NeteaseMusicApplication.getApplication());
+                allClassList = new WeakReference<>(list);
+            }
+            return list;
         }
-        return list;
-    }
 
-    private static List<String> getFilteredClasses(Pattern pattern) throws IllegalAccessException, PackageManager.NameNotFoundException {
-        return getFilteredClasses(pattern, null);
-    }
+        static List<String> getFilteredClasses(Pattern pattern) throws IllegalAccessException, PackageManager.NameNotFoundException {
+            return getFilteredClasses(pattern, null);
+        }
 
-    private static List<String> getFilteredClasses(Pattern pattern, Comparator<String> comparator) throws IllegalAccessException, PackageManager.NameNotFoundException {
-        List<String> list = Utility.filterList(getAllClasses(), pattern);
-        Collections.sort(list, comparator);
-        return list;
-    }
+        static List<String> getFilteredClasses(Pattern pattern, Comparator<String> comparator) throws IllegalAccessException, PackageManager.NameNotFoundException {
+            List<String> list = Utility.filterList(getAllClasses(), pattern);
+            Collections.sort(list, comparator);
+            return list;
+        }
 
-    private static List<String> getFilteredClasses(String start, String end) throws IllegalAccessException, PackageManager.NameNotFoundException {
-        return getFilteredClasses(start, end, null);
-    }
+        static List<String> getFilteredClasses(String start, String end) throws IllegalAccessException, PackageManager.NameNotFoundException {
+            return getFilteredClasses(start, end, null);
+        }
 
-    private static List<String> getFilteredClasses(String start, String end, Comparator<String> comparator) throws IllegalAccessException, PackageManager.NameNotFoundException {
-        List<String> list = Utility.filterList(getAllClasses(), start, end);
-        Collections.sort(list, comparator);
-        return list;
+        static List<String> getFilteredClasses(String start, String end, Comparator<String> comparator) throws IllegalAccessException, PackageManager.NameNotFoundException {
+            List<String> list = Utility.filterList(getAllClasses(), start, end);
+            Collections.sort(list, comparator);
+            return list;
+        }
     }
 
     static class MusicInfo {
@@ -123,7 +126,7 @@ class CloudMusicPackage {
                     String jsonStr = Utility.readFile(file);
                     Song song = new Song();
                     song.parseMatchInfo(new JSONObject(jsonStr));
-                    if (song.isMatchedSong()) {
+                    if (song.is3rdPartySong()) {
                         return String.format("(音源%s：%s - %s)",
                                 song.matchedPlatform,
                                 song.matchedArtistName,
@@ -166,7 +169,7 @@ class CloudMusicPackage {
                 if (curClass.getInterfaces().length > 0 && curClass.getInterfaces()[0] == caInterface) {
                     Method[] methods = findMethodsByExactParameters(curClass, version.startsWith("3") ? Map.class : Object[].class,
                             int.class, int.class);
-                    if (methods != null && methods.length > 0) {
+                    if (methods.length > 0) {
                         Object singleton = XposedHelpers.findFirstFieldByExactType(curClass, caInterface).get(null);
                         // methods[0].invoke(singleton, 1000, 0); // not work
                         callMethod(singleton, methods[0].getName(), 1000, 0);
@@ -300,14 +303,16 @@ class CloudMusicPackage {
                 StringBuilder sb = new StringBuilder();
                 boolean first = true;
                 for (Object l : list) {
-                    if (first)
-                        first = false;
-                    else
-                        sb.append("; ");
+                    if ("music.163.com".equals(callMethod(l, "e"))) {
+                        if (first)
+                            first = false;
+                        else
+                            sb.append("; ");
 
-                    sb.append(URLEncoder.encode((String) callMethod(l, "a"), "UTF-8"));
-                    sb.append("=");
-                    sb.append(URLEncoder.encode((String) callMethod(l, "b"), "UTF-8"));
+                        sb.append(URLEncoder.encode((String) callMethod(l, "a"), "UTF-8"));
+                        sb.append("=");
+                        sb.append(URLEncoder.encode((String) callMethod(l, "b"), "UTF-8"));
+                    }
                 }
                 return sb.toString();
 

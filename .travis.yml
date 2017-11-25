@@ -8,8 +8,8 @@ android:
   components:
     - tools
     - platform-tools
-    - build-tools-26.0.2
-    - android-26
+    - build-tools-27.0.1
+    - android-27
 
 script:
   - if [[ "${TRAVIS_PULL_REQUEST}" = "false" ]]; then
@@ -31,7 +31,6 @@ deploy:
   api_key:
     secure: $GITHUB_TOKEN
   file: $APK_PATH
-  skip_cleaup: true
   overwrite: true
   on:
     tags: true

@@ -214,14 +214,14 @@ public class Utility {
         return fs != null && fs.length > 0 ? fs[0] : null;
     }
 
-    static File[] findFiles(File dir, final String start, final String end, final int limit) {
+    static File[] findFiles(File dir, final String start, final String end, final Integer limit) {
         if (dir != null && dir.exists() && dir.isDirectory())
             return dir.listFiles(new FilenameFilter() {
                 int find = 0;
 
                 @Override
                 public boolean accept(File file, String s) {
-                    if (find < limit
+                    if ((limit == null || find < limit)
                             && (TextUtils.isEmpty(start) || s.startsWith(start))
                             && (TextUtils.isEmpty(end) || s.endsWith(end))) {
                         find++;
@@ -235,10 +235,19 @@ public class Utility {
         }
     }
 
-    static boolean deleteFile(File file) {
-        return file != null && file.exists() && file.isFile() && file.delete();
+    static void deleteFile(File file) {
+        try {
+            //noinspection ResultOfMethodCallIgnored
+            file.delete();
+        } catch (Throwable ignored) {
+        }
     }
 
+    static void deleteFiles(File[] files) {
+        for (File file : files) {
+            deleteFile(file);
+        }
+    }
 
     static boolean containsField(Class source, String exact, String start, String end) {
         return findFirstField(source, exact, start, end) != null;

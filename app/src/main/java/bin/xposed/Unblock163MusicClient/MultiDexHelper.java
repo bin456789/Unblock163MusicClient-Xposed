@@ -7,7 +7,11 @@ import android.content.pm.PackageManager;
 import android.os.Build;
 
 import java.io.File;
+import java.io.FileInputStream;
+import java.io.FileOutputStream;
 import java.io.IOException;
+import java.io.ObjectInputStream;
+import java.io.ObjectOutputStream;
 import java.util.ArrayList;
 import java.util.Enumeration;
 import java.util.List;
@@ -83,7 +87,27 @@ class MultiDexHelper {
      * @throws PackageManager.NameNotFoundException
      */
     static List<String> getAllClasses(Context context) throws PackageManager.NameNotFoundException {
+        // read class list from cache
+        long lastUpdateTime = context.getPackageManager().getPackageInfo(CloudMusicPackage.PACKAGE_NAME, 0).lastUpdateTime;
+        File classesFile = new File(context.getCacheDir(), "ClassList.dat");
+        if (classesFile.exists() && classesFile.canRead()) {
+            try {
+                ObjectInputStream in = new ObjectInputStream(new FileInputStream(classesFile));
+                long lastUpdateTimeFromFile = in.readLong();
+                if (lastUpdateTime == lastUpdateTimeFromFile) {
+                    //noinspection unchecked
+                    return (List<String>) in.readObject();
+                }
+            } catch (IOException e) {
+                log(e);
+            } catch (ClassNotFoundException e) {
+                log(e);
+            }
+        }
+
+
         List<String> classNames = new ArrayList<>();
+        boolean hasException = false;
         for (String path : getSourcePaths(context)) {
             try {
                 DexFile dexfile;
@@ -99,13 +123,29 @@ class MultiDexHelper {
                 while (dexEntries.hasMoreElements()) {
                     classNames.add(dexEntries.nextElement());
                 }
-                if (pathTmp != null)
+                if (pathTmp != null) {
                     Utility.deleteFile(new File(pathTmp));
-            } catch (IOException e) {
+                }
+            } catch (Throwable t) {
+                hasException = true;
                 log("Error at loading dex file '" +
                         path + "'");
             }
         }
+
+        // write class list cache
+        if (!hasException) {
+            try {
+                ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(classesFile));
+                out.writeLong(lastUpdateTime);
+                out.writeObject(classNames);
+                out.flush();
+                out.close();
+            } catch (Throwable t) {
+                log(t);
+            }
+        }
+
         return classNames;
     }
 }

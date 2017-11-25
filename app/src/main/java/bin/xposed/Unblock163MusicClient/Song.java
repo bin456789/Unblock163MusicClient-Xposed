@@ -25,6 +25,7 @@ class Song {
     String matchedSongName;
     String matchedArtistName;
     boolean matchedDuration;
+    Boolean accessible;
 
     static Song parseFromOther(JSONObject songJson) {
         Song song = new Song();
@@ -59,6 +60,26 @@ class Song {
         return null;
     }
 
+    static Song getPreferSong(Song... songs) {
+        Song preferSong = null;
+
+        for (Song song : songs) {
+            if (song == null) {
+                continue;
+            }
+
+            if (preferSong == null) {
+                preferSong = song;
+                continue;
+            }
+
+            if (song.getPrefer() > preferSong.getPrefer()) {
+                preferSong = song;
+            }
+        }
+        return preferSong;
+    }
+
     void parseMatchInfo(JSONObject songJson) {
         matchedPlatform = optString(songJson, "matchedPlatform");
         matchedSongName = optString(songJson, "matchedSongName");
@@ -67,24 +88,33 @@ class Song {
     }
 
     boolean checkAccessible() {
+        if (accessible != null) {
+            return accessible;
+        }
+
+        accessible = false;
         if (url != null) {
             try {
                 Http h = Http.headByGet(url, false);
                 if (h.getResponseCode() == 200 || h.getResponseCode() == 206) {
                     url = h.getFinalLocation();
                     size = h.getContentLength(); // re-calc music size for 3rd party url
-                    return true;
+                    accessible = true;
                 }
             } catch (Throwable t) {
                 log(id + "\n" + br + "\n" + url);
                 log(t);
             }
         }
-        return false;
+        return accessible;
     }
 
-    boolean isMatchedSong() {
+    boolean is3rdPartySong() {
         return matchedPlatform != null;
+    }
+
+    private boolean is3rdMatchedDuration() {
+        return matchedDuration;
     }
 
     JSONObject getMatchedJson() throws JSONException {
@@ -92,5 +122,21 @@ class Song {
                 .put("matchedPlatform", matchedPlatform)
                 .put("matchedSongName", matchedSongName)
                 .put("matchedArtistName", matchedArtistName);
+    }
+
+    int getPrefer() {
+        if (url == null || !checkAccessible()) {
+            return 0;
+        }
+
+        int prefer = br;
+        if (is3rdPartySong()) {
+            prefer--;
+            if (!is3rdMatchedDuration()) {
+                prefer = 1;
+            }
+        }
+
+        return prefer;
     }
 }

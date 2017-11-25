@@ -165,45 +165,52 @@ class Handler {
         try {
             Song oldSong = Song.parseFromOther(oldSongJson);
 
+            // 云盘
             if (oldSong.uf != null)
                 return false;
 
-            if (expectBr > 320000)
-                expectBr = 320000;
+            // 原始 mp3 可以连接
+            if (oldSong.br > 0 && oldSong.url != null) {
+                oldSong.accessible = true;
+            }
 
+            // 忽略无损
+            if (expectBr > 320000) {
+                expectBr = 320000;
+            }
+
+            // 要处理的歌曲
             if (oldSong.url == null
                     || (oldSong.fee != 0 && oldSong.payed == 0 && oldSong.br < expectBr)) {
 
-                Song song1 = null;
-                Song song3 = null;
-                int maxBr = 0;
+                Song preferSong = oldSong;
+                DetailApi detail = null;
+                int maxBr = 320000;
 
                 // detail which br >= expect br
-                DetailApi detail = null;
-                try {
-                    detail = new DetailApi(oldSong.id, expectBr);
-                    maxBr = detail.maxBr;
-
-                    Song tmp = detail.find(1, 0);
-                    if (tmp != null) {
-                        song1 = tmp;
+                if (preferSong.getPrefer() < expectBr
+                        && preferSong.getPrefer() < maxBr) {
+                    try {
+                        detail = new DetailApi(oldSong.id, expectBr);
+                        if (detail.maxBr > 0) {
+                            maxBr = detail.maxBr;
+                        }
+                        Song tmp = detail.find(1, 0);
+                        preferSong = Song.getPreferSong(tmp, preferSong);
+                    } catch (Throwable t) {
+                        log("detail api failed " + oldSong.id);
+                        log(t);
                     }
-                } catch (Throwable t) {
-                    log("detail api failed " + oldSong.id);
-                    log(t);
                 }
 
 
                 // enhance
-                if (song1 == null || (song1.br < expectBr && song1.br < maxBr)) {
+                if (oldSong.fee != 0
+                        && preferSong.getPrefer() < expectBr
+                        && preferSong.getPrefer() < maxBr) {
                     try {
-                        if (oldSong.code == 404 || ("download".equals(from) && oldSong.code == -110)) {
-                        } else {
-                            Song tmp = getSongByRemoteApiEnhance(oldSong.id, expectBr);
-                            if (tmp.checkAccessible()) {
-                                song1 = tmp;
-                            }
-                        }
+                        Song tmp = getSongByRemoteApiEnhance(oldSong.id, expectBr);
+                        preferSong = Song.getPreferSong(tmp, preferSong);
                     } catch (Throwable t) {
                         log("songx api failed " + oldSong.id);
                         log(t);
@@ -211,12 +218,11 @@ class Handler {
                 }
 
                 // 3rd
-                if (song1 == null || (song1.br < expectBr && song1.br < maxBr)) {
+                if (preferSong.getPrefer() < expectBr
+                        && preferSong.getPrefer() < maxBr) {
                     try {
                         Song tmp = getSongBy3rdApi(oldSong.id, expectBr);
-                        if (tmp.checkAccessible()) {  // fix music size
-                            song3 = tmp;
-                        }
+                        preferSong = Song.getPreferSong(tmp, preferSong);
                     } catch (Throwable t) {
                         log("3rd api failed " + oldSong.id);
                         log(t);
@@ -225,59 +231,41 @@ class Handler {
 
 
                 // detail which br < expect br
-                if (song1 == null
-                        && (song3 == null || !song3.matchedDuration || (song3.br < expectBr && song3.br < maxBr))
-                        && detail != null) {
+                if (detail != null
+                        && preferSong.getPrefer() < expectBr
+                        && preferSong.getPrefer() < maxBr) {
                     try {
-                        int minBr = song3 != null && song3.matchedDuration ? song3.br : 0;
+                        int minBr = preferSong.getPrefer();
                         Song tmp = detail.find(2, minBr);
-                        if (tmp != null) {
-                            song1 = tmp;
-                        }
+                        preferSong = Song.getPreferSong(tmp, preferSong);
                     } catch (Throwable t) {
                         log("detail api failed " + oldSong.id);
                         log(t);
                     }
                 }
 
-                Song song;
-                // 如果song1不可用，song3可用，选择song3
-                if (song1 == null && song3 != null) {
-                    song = song3;
-                }
-                // 如果song3完全匹配且br比song1高，选择song3
-                else if (song3 != null
-                        && song3.matchedDuration
-                        && song3.br > song1.br) {
-                    song = song3;
-                }
-                // 其余情况选择song1
-                else {
-                    song = song1;
-                }
 
-                if (song != null) {
-                    oldSongJson.put("br", song.br)
+                if (preferSong.getPrefer() > oldSong.getPrefer()) {
+                    oldSongJson.put("br", preferSong.br)
                             .put("code", 200)
-                            .put("gain", song.gain)
-                            .put("md5", song.md5)
-                            .put("size", song.size)
-                            .put("type", song.type)
-                            .put("url", song.url);
+                            .put("gain", preferSong.gain)
+                            .put("md5", preferSong.md5)
+                            .put("size", preferSong.size)
+                            .put("type", preferSong.type)
+                            .put("url", preferSong.url);
 
                     try {
-                        if (song.isMatchedSong()) {
-                            File dir = CloudMusicPackage.NeteaseMusicApplication.getMusicCacheDir();
-                            String fileName = String.format("%s-%s-%s.%s.xp!", song.id, song.br, song.md5, song.type);
-                            File file = new File(dir, fileName);
-                            String str = song.getMatchedJson().toString();
+                        File cacheDir = CloudMusicPackage.NeteaseMusicApplication.getMusicCacheDir();
+                        if (preferSong.is3rdPartySong()) {
+                            String fileName = String.format("%s-%s-%s.%s.xp!", preferSong.id, preferSong.br, preferSong.md5, preferSong.type);
+                            File file = new File(cacheDir, fileName);
+                            String str = preferSong.getMatchedJson().toString();
                             Utility.writeFile(file, str);
                         } else {
-                            File dir = CloudMusicPackage.NeteaseMusicApplication.getMusicCacheDir();
-                            String start = String.format("%s-%s", song.id, song.br);
+                            String start = String.format("%s-", preferSong.id);
                             String end = ".xp!";
-                            File file = Utility.findFirstFile(dir, start, end);
-                            Utility.deleteFile(file);
+                            File[] files = Utility.findFiles(cacheDir, start, end, null);
+                            Utility.deleteFiles(files);
                         }
                     } catch (Throwable t) {
                         log("read 3rd party tips failed " + oldSong.id);

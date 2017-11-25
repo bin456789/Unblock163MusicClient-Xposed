@@ -98,6 +98,7 @@ public class Main implements IXposedHookLoadPackage {
                                         || path.contains("album")
                                         || path.contains("artist")
                                         || path.contains("play")
+                                        || path.contains("radio")
                                         || path.contains("song")
                                         || path.contains("search")) {
                                     modified = Handler.modifyByRegex(original);
