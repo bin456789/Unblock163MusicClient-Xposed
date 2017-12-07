@@ -259,6 +259,7 @@ class CloudMusicPackage {
         private static boolean useOkHttp = false;
         private static Class clazz;
         private static Method m_getCookieString;
+        private static Class c_cookieClass;
         final Object httpBase;
 
         HttpEapi(Object httpBase) {
@@ -267,7 +268,12 @@ class CloudMusicPackage {
 
         static void init() throws PackageManager.NameNotFoundException, IllegalAccessException {
             if (!getFilteredClasses("okhttp3", null).isEmpty()) {
-                clazz = findClass("com.netease.cloudmusic.h.f.d.d", classLoader);
+                Pattern pattern = Pattern.compile("^com\\.netease\\.cloudmusic\\.[a-z]\\.f\\.d\\.d$");
+                List<String> list = getFilteredClasses(pattern, Collections.<String>reverseOrder());
+                if (list.isEmpty()) {
+                    throw new RuntimeException("init failed");
+                }
+                clazz = findClass(list.get(0), classLoader);
                 useOkHttp = true;
             } else {
                 Pattern pattern = Pattern.compile("^com\\.netease\\.cloudmusic\\.[a-z]\\.[a-z]$");
@@ -299,7 +305,11 @@ class CloudMusicPackage {
 
         static String getDefaultCookie() throws UnsupportedEncodingException, JSONException, InvocationTargetException, IllegalAccessException {
             if (useOkHttp) {
-                List list = (List) callMethod(callStaticMethod(findClass("com.netease.cloudmusic.h.e.a.a", classLoader), "a"), "d");
+                if (c_cookieClass == null) {
+                    String className = getClazz().getName().substring(0, PACKAGE_NAME.length() + 2) + ".e.a.a";
+                    c_cookieClass = findClass(className, classLoader);
+                }
+                List list = (List) callMethod(callStaticMethod(c_cookieClass, "a"), "d");
                 StringBuilder sb = new StringBuilder();
                 boolean first = true;
                 for (Object l : list) {

@@ -248,6 +248,7 @@ class Handler {
                 if (preferSong.getPrefer() > oldSong.getPrefer()) {
                     oldSongJson.put("br", preferSong.br)
                             .put("code", 200)
+                            .put("flag", 0)
                             .put("gain", preferSong.gain)
                             .put("md5", preferSong.md5)
                             .put("size", preferSong.size)
