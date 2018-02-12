@@ -1,42 +1,23 @@
 package bin.xposed.Unblock163MusicClient;
 
-import org.apache.http.Header;
-import org.apache.http.HttpEntity;
-import org.apache.http.HttpResponse;
-import org.apache.http.client.HttpClient;
-import org.apache.http.client.methods.HttpGet;
-import org.apache.http.client.methods.HttpHead;
-import org.apache.http.client.methods.HttpPost;
-import org.apache.http.client.methods.HttpUriRequest;
-import org.apache.http.client.params.HttpClientParams;
-import org.apache.http.conn.ClientConnectionManager;
-import org.apache.http.conn.params.ConnManagerParams;
-import org.apache.http.conn.params.ConnPerRoute;
-import org.apache.http.conn.params.ConnPerRouteBean;
-import org.apache.http.conn.scheme.PlainSocketFactory;
-import org.apache.http.conn.scheme.Scheme;
-import org.apache.http.conn.scheme.SchemeRegistry;
-import org.apache.http.conn.ssl.SSLSocketFactory;
-import org.apache.http.entity.ByteArrayEntity;
-import org.apache.http.impl.client.DefaultHttpClient;
-import org.apache.http.impl.conn.tsccm.ThreadSafeClientConnManager;
-import org.apache.http.params.BasicHttpParams;
-import org.apache.http.params.HttpConnectionParams;
-import org.apache.http.params.HttpParams;
+import android.text.TextUtils;
+
 import org.json.JSONException;
 
 import java.io.BufferedReader;
+import java.io.BufferedWriter;
 import java.io.IOException;
-import java.io.InputStream;
 import java.io.InputStreamReader;
+import java.io.OutputStream;
+import java.io.OutputStreamWriter;
 import java.lang.reflect.InvocationTargetException;
+import java.net.HttpURLConnection;
+import java.net.URL;
 import java.util.LinkedHashMap;
 import java.util.Map;
-import java.util.zip.GZIPInputStream;
 
 @SuppressWarnings("ALL")
 class Http {
-    private static HttpClient httpClient = null;
     private int responseCode;
     private String responseText;
     private long contentLength;
@@ -52,8 +33,9 @@ class Http {
             } catch (Throwable t) {
                 t.printStackTrace();
                 retryCount--;
-                if (retryCount <= 0)
+                if (retryCount <= 0) {
                     throw t;
+                }
             }
         }
     }
@@ -79,105 +61,102 @@ class Http {
         return new Http("GET", urlString, null, sendDefaultHead, map);
     }
 
-    public static synchronized HttpClient getHttpClient() {
-        if (httpClient == null) {
-            HttpParams params = new BasicHttpParams();
-            HttpClientParams.setRedirecting(params, false);
-
-            HttpConnectionParams.setConnectionTimeout(params, 5000);
-            HttpConnectionParams.setSoTimeout(params, 5000);
-
-            SchemeRegistry schReg = new SchemeRegistry();
-            schReg.register(new Scheme("http", PlainSocketFactory.getSocketFactory(), 80));
-            schReg.register(new Scheme("https", SSLSocketFactory.getSocketFactory(), 443));
-
-
-            ConnPerRoute perRoute = new ConnPerRouteBean(1000);
-            ConnManagerParams.setMaxConnectionsPerRoute(params, perRoute);
-            ConnManagerParams.setMaxTotalConnections(params, 1000);
-
-            ClientConnectionManager conMgr = new ThreadSafeClientConnManager(params, schReg);
-            httpClient = new DefaultHttpClient(conMgr, params);
-        }
-
-        return httpClient;
-    }
-
     private void doRequest(String method, String urlString, String postData, Boolean sendDefaultHead, Map<String, String> additionHeaders) throws IOException, JSONException, InvocationTargetException, IllegalAccessException {
-        if (urlString == null)
+        if (TextUtils.isEmpty(urlString)) {
             return;
+        }
 
-        if (method == null)
+        if (TextUtils.isEmpty(method)) {
             method = "GET";
-
-
-        urlString = urlString.replace("/thirdyires.imusicapp.cn/res/thirdparty/", "/wapst.ctmus.cn/res/V/");
-
-        HttpUriRequest request = null;
-
-        if ("HEAD".equals(method)) {
-            request = new HttpHead(urlString);
-        } else if ("GET".equals(method)) {
-            request = new HttpGet(urlString);
-        } else if ("POST".equals(method)) {
-            request = new HttpPost(urlString);
-            HttpEntity entity = new ByteArrayEntity(postData.getBytes("UTF-8"));
-            ((HttpPost) request).setEntity(entity);
-            request.setHeader("Content-Type", "application/x-www-form-urlencoded; charset=UTF-8");
         }
 
-        finalLocation = request.getURI().toString();
+        // url
+        urlString = urlString.replace("/thirdyires.imusicapp.cn/res/thirdparty/", "/clientst.musicway.cn/res/");
+        URL url = new URL(urlString);
+        finalLocation = url.toString();
 
-        // 开始设置 Header
-        request.setHeader("User-Agent", "android");
+        HttpURLConnection conn = (HttpURLConnection) url.openConnection();
+        try {
+            conn.setInstanceFollowRedirects(false);
 
-        if (sendDefaultHead) {
-            request.setHeader("Cookie", String.format("modver=%s; %s", BuildConfig.VERSION_NAME, CloudMusicPackage.HttpEapi.getDefaultCookie()));
-        }
+            // method
+            method = method.toUpperCase();
+            conn.setRequestMethod(method);
 
-        if (additionHeaders != null) {
-            for (Map.Entry<String, String> entry : additionHeaders.entrySet()) {
-                request.setHeader(entry.getKey(), entry.getValue());
-            }
-        }
-
-        // 开始请求
-        HttpResponse response = getHttpClient().execute(request);
-
-
-        // receive
-        responseCode = response.getStatusLine().getStatusCode();
-        if (responseCode == 301 || responseCode == 302) {
-            doRequest(method, response.getFirstHeader("Location").getValue(), postData, sendDefaultHead, additionHeaders);
-            return;
-        }
+            // timeout
+            conn.setConnectTimeout(5000);
+            conn.setReadTimeout(5000);
 
 
-        if (responseCode >= 200 && responseCode < 400) {
-            InputStream inputStream = response.getEntity().getContent();
-            Header contentEncoding = response.getFirstHeader("Content-Encoding");
-            if (contentEncoding != null && contentEncoding.getValue().equalsIgnoreCase("gzip")) {
-                inputStream = new GZIPInputStream(inputStream);
+            // ua
+            conn.setRequestProperty("User-Agent", "Android");
+
+            // header
+            if (additionHeaders != null && !additionHeaders.isEmpty()) {
+                for (Map.Entry<String, String> entry : additionHeaders.entrySet()) {
+                    conn.setRequestProperty(entry.getKey(), entry.getValue());
+                }
             }
 
-            BufferedReader bufferedReader = new BufferedReader(new InputStreamReader(inputStream));
-            String line;
-            StringBuilder sb = new StringBuilder();
-            while ((line = bufferedReader.readLine()) != null)
-                sb.append(line).append("\n");
 
-            bufferedReader.close();
-            inputStream.close();
-            responseText = sb.toString();
+            // cookie
+            if (sendDefaultHead) {
+                conn.setRequestProperty("Cookie", CloudMusicPackage.HttpEapi.getDefaultCookie());
+                conn.setRequestProperty("Modver", BuildConfig.VERSION_NAME);
+            }
+
+
+            // send post data
+            if ("POST".equals(method)) {
+                conn.setDoOutput(true);
+
+                OutputStream outputStream = conn.getOutputStream();
+                BufferedWriter bufferedWriter = new BufferedWriter(new OutputStreamWriter(outputStream));
+                bufferedWriter.write(postData);
+                bufferedWriter.close();
+                outputStream.close();
+            }
+
+            // redirect
+            responseCode = conn.getResponseCode();
+            if (responseCode == 301 || responseCode == 302) {
+                conn.disconnect();
+                doRequest(method, conn.getHeaderField("Location"), postData, sendDefaultHead, additionHeaders);
+                return;
+            }
 
             // whole file size
-            if (response.containsHeader("Content-Range"))
-                contentLength = Integer.parseInt(Utility.getLastPartOfString(response.getFirstHeader("Content-Range").getValue(), "/"));
-            else
-                contentLength = response.getEntity().getContentLength();
+            if (conn.getHeaderFields().containsKey("Content-Range")) {
+                contentLength = Long.parseLong(Utility.getLastPartOfString(conn.getHeaderField("Content-Range"), "/"));
+            } else {
+                contentLength = conn.getContentLength();
+            }
 
 
+            // receive
+            InputStreamReader inputStreamReader;
+            StringBuilder sb = new StringBuilder();
+            if (responseCode >= 200 && responseCode < 400) {
+                inputStreamReader = new InputStreamReader(conn.getInputStream());
+                BufferedReader bufferedReader = new BufferedReader(inputStreamReader);
+
+                String line;
+                while ((line = bufferedReader.readLine()) != null) {
+                    sb.append(line).append("\n");
+                }
+
+                bufferedReader.close();
+                inputStreamReader.close();
+            }
+
+            responseText = sb.toString();
+
+        } catch (Throwable t) {
+            throw t;
+        } finally {
+            conn.disconnect();
         }
+
     }
 
     public int getResponseCode() {

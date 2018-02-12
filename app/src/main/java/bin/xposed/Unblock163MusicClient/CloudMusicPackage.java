@@ -5,6 +5,8 @@ import android.content.Context;
 import android.content.pm.PackageManager;
 import android.view.View;
 
+import com.annimon.stream.Stream;
+
 import org.json.JSONException;
 import org.json.JSONObject;
 
@@ -17,13 +19,14 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
-import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.NoSuchElementException;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 
@@ -41,13 +44,13 @@ import static de.robv.android.xposed.XposedHelpers.getAdditionalInstanceField;
 import static de.robv.android.xposed.XposedHelpers.getObjectField;
 import static de.robv.android.xposed.XposedHelpers.setAdditionalInstanceField;
 
-class CloudMusicPackage {
+public class CloudMusicPackage {
     static final String PACKAGE_NAME = "com.netease.cloudmusic";
     private static String version;
     private static WeakReference<List<String>> allClassList = new WeakReference<>(null);
     private static ClassLoader classLoader;
 
-    static String getVersion() {
+    public static String getVersion() {
         return version;
     }
 
@@ -57,7 +60,11 @@ class CloudMusicPackage {
         HttpEapi.init();
     }
 
-    static class ClassHelper {
+    public static ClassLoader getClassLoader() {
+        return classLoader;
+    }
+
+    public static class ClassHelper {
         static List<String> getAllClasses() throws IllegalAccessException, PackageManager.NameNotFoundException {
             List<String> list = allClassList.get();
             if (list == null || list.isEmpty()) {
@@ -67,52 +74,53 @@ class CloudMusicPackage {
             return list;
         }
 
-        static List<String> getFilteredClasses(Pattern pattern) throws IllegalAccessException, PackageManager.NameNotFoundException {
+        public static List<String> getFilteredClasses(Pattern pattern) throws IllegalAccessException, PackageManager.NameNotFoundException {
             return getFilteredClasses(pattern, null);
         }
 
-        static List<String> getFilteredClasses(Pattern pattern, Comparator<String> comparator) throws IllegalAccessException, PackageManager.NameNotFoundException {
+        public static List<String> getFilteredClasses(Pattern pattern, Comparator<String> comparator) throws IllegalAccessException, PackageManager.NameNotFoundException {
             List<String> list = Utility.filterList(getAllClasses(), pattern);
             Collections.sort(list, comparator);
             return list;
         }
 
-        static List<String> getFilteredClasses(String start, String end) throws IllegalAccessException, PackageManager.NameNotFoundException {
+        public static List<String> getFilteredClasses(String start, String end) throws IllegalAccessException, PackageManager.NameNotFoundException {
             return getFilteredClasses(start, end, null);
         }
 
-        static List<String> getFilteredClasses(String start, String end, Comparator<String> comparator) throws IllegalAccessException, PackageManager.NameNotFoundException {
+        public static List<String> getFilteredClasses(String start, String end, Comparator<String> comparator) throws IllegalAccessException, PackageManager.NameNotFoundException {
             List<String> list = Utility.filterList(getAllClasses(), start, end);
             Collections.sort(list, comparator);
             return list;
         }
     }
 
-    static class MusicInfo {
+    public static class MusicInfo {
         private static Class clazz;
 
         private final Object musicInfo;
 
-        MusicInfo(Object musicInfo) {
+        public MusicInfo(Object musicInfo) {
             this.musicInfo = musicInfo;
         }
 
-        static Class getClazz() {
-            if (clazz == null)
+        public static Class getClazz() {
+            if (clazz == null) {
                 clazz = findClass("com.netease.cloudmusic.meta.MusicInfo", classLoader);
+            }
 
             return clazz;
         }
 
-        static boolean isStarred(long musicId) {
+        public static boolean isStarred(long musicId) {
             return (boolean) callStaticMethod(MusicInfo.getClazz(), "isStarred", musicId);
         }
 
-        long getMatchedMusicId() {
+        public long getMatchedMusicId() {
             return (long) callMethod(musicInfo, "getMatchedMusicId");
         }
 
-        String get3rdSourceString() throws JSONException, PackageManager.NameNotFoundException, IllegalAccessException, IOException {
+        public String get3rdSourceString() throws JSONException, PackageManager.NameNotFoundException, IllegalAccessException, IOException {
             long musicId = getMatchedMusicId();
             int br = (int) callMethod(musicInfo, "getCurrentBitRate");
             // 未播放的br为0
@@ -140,7 +148,7 @@ class CloudMusicPackage {
 
     }
 
-    static class Mam {
+    public static class Mam {
         private static String prefix;
 
         static String getPrefix() {
@@ -151,42 +159,19 @@ class CloudMusicPackage {
             Mam.prefix = prefix;
         }
 
-        static Class findMamClass(Class clazz) {
+        public static Class findMamClass(Class clazz) {
             assert prefix != null;
             return findClass(prefix + clazz.getName(), classLoader);
         }
     }
 
-    static class CAC {
-        static void refreshMyPlaylist() throws PackageManager.NameNotFoundException, IllegalAccessException {
-            Class caInterface = version.startsWith("3.0") ?
-                    findClass("com.netease.cloudmusic.b.a", classLoader) :
-                    findClass("com.netease.cloudmusic.c.a", classLoader);
-            String caPackage = caInterface.getPackage().getName();
-
-            for (String curStr : getFilteredClasses(caPackage + ".", null)) {
-                Class curClass = XposedHelpers.findClass(curStr, classLoader);
-                if (curClass.getInterfaces().length > 0 && curClass.getInterfaces()[0] == caInterface) {
-                    Method[] methods = findMethodsByExactParameters(curClass, version.startsWith("3") ? Map.class : Object[].class,
-                            int.class, int.class);
-                    if (methods.length > 0) {
-                        Object singleton = XposedHelpers.findFirstFieldByExactType(curClass, caInterface).get(null);
-                        // methods[0].invoke(singleton, 1000, 0); // not work
-                        callMethod(singleton, methods[0].getName(), 1000, 0);
-                        return;
-                    }
-                }
-            }
-            throw new RuntimeException("can't find refreshMyPlaylistMethod");
-        }
-    }
-
-    static class NeteaseMusicUtils {
+    public static class NeteaseMusicUtils {
         private static Class clazz;
 
-        static Class getClazz() {
-            if (clazz == null)
+        public static Class getClazz() {
+            if (clazz == null) {
                 clazz = findClass("com.netease.cloudmusic.utils.NeteaseMusicUtils", classLoader);
+            }
 
             return clazz;
         }
@@ -199,21 +184,23 @@ class CloudMusicPackage {
 
     static class NeteaseMusicApplication {
         private static Class clazz;
-        private static Field f_singleton;
+        private static Field singletonField;
         private static File musicCacheDir;
 
         static Class getClazz() {
-            if (clazz == null)
+            if (clazz == null) {
                 clazz = findClass("com.netease.cloudmusic.NeteaseMusicApplication", classLoader);
+            }
 
             return clazz;
         }
 
         static Application getApplication() throws IllegalAccessException {
-            if (f_singleton == null)
-                f_singleton = XposedHelpers.findFirstFieldByExactType(NeteaseMusicApplication.getClazz(), NeteaseMusicApplication.getClazz());
+            if (singletonField == null) {
+                singletonField = XposedHelpers.findFirstFieldByExactType(NeteaseMusicApplication.getClazz(), NeteaseMusicApplication.getClazz());
+            }
 
-            return (Application) f_singleton.get(null);
+            return (Application) singletonField.get(null);
         }
 
 
@@ -224,25 +211,18 @@ class CloudMusicPackage {
                 Pattern pattern = Pattern.compile("^com\\.netease\\.cloudmusic\\.[a-z]$");
                 List<String> list = getFilteredClasses(pattern);
 
-                int i = 0;
-                for (String curStr : list) {
-                    Class curClass = XposedHelpers.findClass(curStr, classLoader);
-                    int c = 0;
-                    Field[] fields = curClass.getDeclaredFields();
-                    for (Field field : fields) {
-                        if (field.getType() == String.class && !Modifier.isFinal(field.getModifiers())) {
-                            c++;
-                        }
-                    }
+                Class z = Stream.of(list)
+                        .map(s -> findClass(s, classLoader))
+                        .sortBy(c -> Stream.of(c.getDeclaredFields())
+                                .filter(f -> f.getType() == String.class)
+                                .filter(f -> !Modifier.isFinal(f.getModifiers()))
+                                .count())
+                        .findLast()
+                        .get();
 
-                    if (c > i) {
-                        i = c;
-                        findClass = curClass;
-                    }
-                }
 
                 // get cache dir
-                String cacheFile = (String) callStaticMethod(findClass,
+                String cacheFile = (String) callStaticMethod(z,
                         "a",
                         1L, 320000, "00000000000000000000000000000000");
                 musicCacheDir = new File(cacheFile).getParentFile();
@@ -253,141 +233,160 @@ class CloudMusicPackage {
         }
     }
 
-    static class HttpEapi {
-        private static final List<Member> m_constructor = new ArrayList<>();
-        private static final List<Method> m_rawStringMethodList = new ArrayList<>();
+    public static class HttpEapi {
+        final static Map<String, String> cookieMethodMap = new HashMap<>(3);
+        private static final List<Member> constructorList = new ArrayList<>();
+        private static final List<Method> rawStringMethodList = new ArrayList<>();
         private static boolean useOkHttp = false;
         private static Class clazz;
-        private static Method m_getCookieString;
-        private static Class c_cookieClass;
+        private static Method getCookieStringMethod;
+        private static Class cookieUtilClass;
         final Object httpBase;
 
-        HttpEapi(Object httpBase) {
+        public HttpEapi(Object httpBase) {
             this.httpBase = httpBase;
         }
 
         static void init() throws PackageManager.NameNotFoundException, IllegalAccessException {
             if (!getFilteredClasses("okhttp3", null).isEmpty()) {
-                Pattern pattern = Pattern.compile("^com\\.netease\\.cloudmusic\\.[a-z]\\.f\\.d\\.d$");
-                List<String> list = getFilteredClasses(pattern, Collections.<String>reverseOrder());
+                Pattern pattern = Pattern.compile("^com\\.netease\\.cloudmusic\\.[a-z]\\.[a-z]\\.[a-z]\\.[a-z]$");
+                List<String> list = getFilteredClasses(pattern, Collections.reverseOrder());
                 if (list.isEmpty()) {
                     throw new RuntimeException("init failed");
                 }
-                clazz = findClass(list.get(0), classLoader);
+
+                clazz = Stream.of(list)
+                        .map(s -> findClass(s, classLoader))
+                        .filter(c -> Modifier.isAbstract(c.getModifiers()))
+                        .filter(c -> Modifier.isPublic(c.getModifiers()))
+                        .filter(c -> c.getSuperclass() == Object.class)
+                        .filter(c -> Stream.of(c.getDeclaredFields()).anyMatch(m -> m.getType().getName().startsWith("okhttp3")))
+                        .findFirst()
+                        .get();
+
                 useOkHttp = true;
+                Okhttp.init();
+
             } else {
                 Pattern pattern = Pattern.compile("^com\\.netease\\.cloudmusic\\.[a-z]\\.[a-z]$");
-                List<String> list = getFilteredClasses(pattern, Collections.<String>reverseOrder());
+                List<String> list = getFilteredClasses(pattern, Collections.reverseOrder());
 
                 @SuppressWarnings("deprecation")
                 String cookieStore = org.apache.http.client.CookieStore.class.getName();
-                for (String curStr : list) {
-                    Class curClass = XposedHelpers.findClass(curStr, classLoader);
-                    Field cookieStoreField = Utility.findFirstField(curClass, null, null, cookieStore);
-                    if (cookieStoreField != null) {
-                        Method[] methods = findMethodsByExactParameters(curClass, curClass);
-                        if (methods.length > 0) {
-                            clazz = curClass;
-                            String cookieStoreWithPrefix = cookieStoreField.getType().getName();
-                            String prefix = cookieStoreWithPrefix.substring(0, cookieStoreWithPrefix.indexOf(cookieStore));
-                            Mam.setPrefix(prefix);
-                            return;
-                        }
-                    }
+
+                Field cookieStoreField = Stream.of(list)
+                        .map(s -> findClass(s, classLoader))
+                        .filter(c -> findMethodsByExactParameters(c, c).length > 0)
+                        .map(c -> Utility.findFirstField(c, null, null, cookieStore))
+                        .findFirst()
+                        .get();
+
+                clazz = cookieStoreField.getDeclaringClass();
+                String cookieStoreWithPrefix = cookieStoreField.getType().getName();
+                String prefix = cookieStoreWithPrefix.substring(0, cookieStoreWithPrefix.indexOf(cookieStore));
+                Mam.setPrefix(prefix);
+
+                if (clazz == null) {
+                    throw new RuntimeException("init failed");
                 }
-                throw new RuntimeException("init failed");
             }
         }
 
-        static Class getClazz() {
+        public static Class getClazz() {
             return clazz;
         }
 
         static String getDefaultCookie() throws UnsupportedEncodingException, JSONException, InvocationTargetException, IllegalAccessException {
             if (useOkHttp) {
-                if (c_cookieClass == null) {
+                // okHttp 4.x
+                if (cookieUtilClass == null) {
                     String className = getClazz().getName().substring(0, PACKAGE_NAME.length() + 2) + ".e.a.a";
-                    c_cookieClass = findClass(className, classLoader);
-                }
-                List list = (List) callMethod(callStaticMethod(c_cookieClass, "a"), "d");
-                StringBuilder sb = new StringBuilder();
-                boolean first = true;
-                for (Object l : list) {
-                    if ("music.163.com".equals(callMethod(l, "e"))) {
-                        if (first)
-                            first = false;
-                        else
-                            sb.append("; ");
+                    cookieUtilClass = findClass(className, classLoader);
 
-                        sb.append(URLEncoder.encode((String) callMethod(l, "a"), "UTF-8"));
-                        sb.append("=");
-                        sb.append(URLEncoder.encode((String) callMethod(l, "b"), "UTF-8"));
+                    try {
+                        findClass("okhttp3.Cookie", classLoader);
+                        cookieMethodMap.put("name", "name");
+                        cookieMethodMap.put("value", "value");
+                        cookieMethodMap.put("domain", "domain");
+                    } catch (XposedHelpers.ClassNotFoundError e) {
+                        cookieMethodMap.put("name", "a");
+                        cookieMethodMap.put("value", "b");
+                        cookieMethodMap.put("domain", "e");
                     }
                 }
-                return sb.toString();
+
+                List cookieList = (List) callMethod(callStaticMethod(cookieUtilClass, "a"), "d");
+                return Utility.serialCookies(cookieList, cookieMethodMap, "music.163.com");
 
             } else if (version.startsWith("3.0")) {
-                @SuppressWarnings({"deprecation", "unchecked"})
-                List<org.apache.http.cookie.Cookie> cookies = (List<org.apache.http.cookie.Cookie>) findMethodsByExactParameters(HttpEapi.getClazz(), List.class)[0].invoke(null);
-                return Utility.serialCookies(cookies);
+                // HttpClient 3.0
+                if (cookieMethodMap.isEmpty()) {
+                    cookieMethodMap.put("name", "getName");
+                    cookieMethodMap.put("value", "getValue");
+                    cookieMethodMap.put("domain", "getDomain");
+                }
+
+                List cookieList = (List) findMethodsByExactParameters(HttpEapi.getClazz(), List.class)[0].invoke(null);
+                return Utility.serialCookies(cookieList, cookieMethodMap, "music.163.com");
+
             } else {
-                if (m_getCookieString == null) {
+                // HttpClient 3.1-4.x
+                if (getCookieStringMethod == null) {
                     Method[] methods = XposedHelpers.findMethodsByExactParameters(getClazz(), String.class, String.class);
-                    for (Method method : methods) {
-                        if (Modifier.isStatic(method.getModifiers()) && Modifier.isPublic(method.getModifiers())) {
-                            m_getCookieString = method;
-                            break;
-                        }
-                    }
+                    getCookieStringMethod = Stream.of(methods)
+                            .filter(m -> Modifier.isStatic(m.getModifiers()))
+                            .filter(m -> Modifier.isPublic(m.getModifiers()))
+                            .findFirst()
+                            .get();
                 }
-                return (String) m_getCookieString.invoke(null, "music.163.com");
+                return (String) getCookieStringMethod.invoke(null, "music.163.com");
             }
         }
 
-        static List<Member> getConstructor() {
-            if (m_constructor.isEmpty()) {
+        public static List<Member> getConstructorList() {
+            if (constructorList.isEmpty()) {
                 if (useOkHttp) {
-                    m_constructor.add(findConstructorExact(getClazz(), String.class, Map.class));
-                    m_constructor.add(findMethodExact(getClazz(), "a", Map.class));
+                    constructorList.add(findConstructorExact(getClazz(), String.class, Map.class));
+                    constructorList.add(findMethodExact(getClazz(), "a", Map.class));
                 } else {
-                    m_constructor.add(findConstructorExact(getClazz(), String.class, Map.class, String.class, boolean.class));
+                    constructorList.add(findConstructorExact(getClazz(), String.class, Map.class, String.class, boolean.class));
                 }
             }
-            return m_constructor;
+            return constructorList;
         }
 
 
-        static List<Method> getRawStringMethods() {
-            if (m_rawStringMethodList.isEmpty()) {
+        public static List<Method> getRawStringMethodList() {
+            if (rawStringMethodList.isEmpty()) {
                 if (useOkHttp) {
                     List<Method> list = new ArrayList<>();
                     list.addAll(Arrays.asList(findMethodsByExactParameters(getClazz(), JSONObject.class)));
                     list.addAll(Arrays.asList(findMethodsByExactParameters(getClazz(), String.class)));
 
-                    for (Method method : list) {
-                        if (Modifier.isPublic(method.getModifiers())
-                                && !Modifier.isFinal(method.getModifiers())
-                                && !Modifier.isStatic(method.getModifiers()))
-                            m_rawStringMethodList.add(method);
-                    }
+                    rawStringMethodList.addAll(Stream.of(list)
+                            .filter(m -> Modifier.isPublic(m.getModifiers()))
+                            .filter(m -> !Modifier.isFinal(m.getModifiers()))
+                            .filter(m -> !Modifier.isStatic(m.getModifiers()))
+                            .toList());
+
 
                 } else {
-                    m_rawStringMethodList.add(findMethodExact(getClazz(), "a", String.class));
+                    rawStringMethodList.add(findMethodExact(getClazz(), "a", String.class));
                 }
             }
-            return m_rawStringMethodList;
+            return rawStringMethodList;
         }
 
-        static boolean isUseOkHttp() {
+        public static boolean isUseOkHttp() {
             return useOkHttp;
         }
 
         @SuppressWarnings("unchecked")
-        Map<String, String> getRequestMap() {
+        public Map<String, String> getRequestMap() {
             return (Map<String, String>) getAdditionalInstanceField(this.httpBase, "__map");
         }
 
-        void setRequestMap(Map<String, String> map) {
+        public void setRequestMap(Map<String, String> map) {
             try {
                 //noinspection unchecked
                 Map<String, String> m = (Map<String, String>) getObjectField(this.httpBase, "__map");
@@ -397,59 +396,62 @@ class CloudMusicPackage {
             }
         }
 
-        String getPath() {
+        public String getPath() {
             return (String) getAdditionalInstanceField(this.httpBase, "__path");
         }
 
-        void setPath(String path) {
+        public void setPath(String path) {
             setAdditionalInstanceField(this.httpBase, "__path", path);
         }
     }
 
-    static class UIAA {
+    public static class UIAA {
         private static Class clazz;
-        private static Method m_qualityBox;
+        private static Method getQualityBoxMethod;
 
-        static Class getClazz() {
-            if (clazz == null)
-                clazz = findClass("com.netease.cloudmusic.ui.a.a", classLoader);
-
+        public static Class getClazz() {
+            if (clazz == null) {
+                try {
+                    clazz = findClass("com.netease.cloudmusic.ui.MaterialDiloagCommon.a", classLoader);
+                } catch (XposedHelpers.ClassNotFoundError e) {
+                    clazz = findClass("com.netease.cloudmusic.ui.a.a", classLoader);
+                }
+            }
             return clazz;
         }
 
-        static Method getQualityBoxMethod() {
-            if (m_qualityBox == null) {
-                Method[] methods = UIAA.getClazz().getDeclaredMethods();
-                for (int i = methods.length - 1; i >= 0; i--) {
-                    Method m = methods[i];
-                    Class[] paras = m.getParameterTypes();
-                    if (paras.length == 6
-                            && paras[0] == Context.class
-                            && paras[1] == Object.class
-                            && paras[2] == Object.class
-                            && paras[3] == (version.startsWith("3") ? int[].class : Object.class)
-                            && paras[4] == int.class) {
-                        m_qualityBox = m;
-                        return m_qualityBox;
-                    }
+        public static Method getQualityBoxMethod() {
+            if (getQualityBoxMethod == null) {
+                try {
+                    Method[] methods = UIAA.getClazz().getDeclaredMethods();
+                    getQualityBoxMethod = Stream.of(methods)
+                            .filter(m -> m.getParameterTypes().length == 6)
+                            .filter(m -> m.getParameterTypes()[0] == Context.class)
+                            .filter(m -> m.getParameterTypes()[1] == Object.class)
+                            .filter(m -> m.getParameterTypes()[2] == Object.class)
+                            .filter(m -> m.getParameterTypes()[3] == (version.startsWith("3") ? int[].class : Object.class))
+                            .filter(m -> m.getParameterTypes()[4] == int.class)
+                            .findLast() // 3.0 有两个同参数的方法
+                            .get();
+                } catch (NoSuchElementException e) {
+                    throw new RuntimeException("can't find getQualityBoxMethod");
                 }
-                throw new RuntimeException("can't find getQualityBoxMethod");
             }
-            return m_qualityBox;
+            return getQualityBoxMethod;
         }
     }
 
-    static class PlayerActivity {
+    public static class PlayerActivity {
         private static Class clazz;
-        private static Field f_musicInfo;
-        private static Method m_likeButtonOnClick;
+        private static Field musicInfoField;
+        private static Method likeButtonOnClickMethod;
         private final Object playerActivity;
 
-        PlayerActivity(Object playerActivity) {
+        public PlayerActivity(Object playerActivity) {
             this.playerActivity = playerActivity;
         }
 
-        static Class getClazz() {
+        public static Class getClazz() {
             if (clazz == null) {
                 String className = version.startsWith("3.0")
                         ? "com.netease.cloudmusic.activity.PlayerMusicActivity"
@@ -459,142 +461,290 @@ class CloudMusicPackage {
             return clazz;
         }
 
-        static Method getLikeButtonOnClickMethod() throws IllegalAccessException, PackageManager.NameNotFoundException {
-            if (m_likeButtonOnClick == null) {
-                String playerActivity = version.startsWith("3.0")
-                        ? PlayerActivity.getClazz().getName()
-                        : PlayerActivity.getClazz().getSuperclass().getName();
+        public static Method getLikeButtonOnClickMethod() throws IllegalAccessException, PackageManager.NameNotFoundException {
+            if (likeButtonOnClickMethod == null) {
+                try {
+                    String playerActivity = version.startsWith("3.0")
+                            ? PlayerActivity.getClazz().getName()
+                            : PlayerActivity.getClazz().getSuperclass().getName();
 
 
-                Pattern pattern = Pattern.compile(String.format("^%s\\$(\\d+)", playerActivity));
-                List<String> list = getFilteredClasses(pattern, new Utility.AlphanumComparator());
+                    Pattern pattern = Pattern.compile(String.format("^%s\\$(\\d+)", playerActivity));
+                    List<String> list = getFilteredClasses(pattern, new Utility.AlphanumComparator());
+                    int num = Stream.of(list)
+                            .groupBy(s -> {
+                                Matcher m = pattern.matcher(s);
+                                return m.find() ? Integer.parseInt(m.group(1)) : -1;
+                            })
+                            .filter(g -> g.getKey() > -1)
+                            .max((x, y) -> {
+                                int sizeDiff = x.getValue().size() - y.getValue().size();
+                                if (sizeDiff != 0) {
+                                    return sizeDiff;
+                                }
+                                int nameDiff = x.getKey() - y.getKey();
+                                return -nameDiff;
+                            }).get().getKey();
 
-                int maxK = -1;
-                int maxCount = -1;
-                int lastK = -1;
-                int lastCount = -1;
 
-                for (String s : list) {
-                    Matcher matcher = pattern.matcher(s);
-                    if (matcher.find()) {
-                        int thisK = Integer.parseInt(matcher.group(1));
-                        // reset
-                        if (thisK != lastK) {
-                            lastK = thisK;
-                            lastCount = 0;
-                        }
-
-                        lastCount++;
-                        if (lastCount > maxCount) {
-                            maxK = lastK;
-                            maxCount = lastCount;
-                        }
+                    if (num >= 0) {
+                        likeButtonOnClickMethod = findMethodExact(playerActivity + "$" + num, classLoader, "onClick", View.class);
+                        return likeButtonOnClickMethod;
                     }
+                } catch (NoSuchElementException e) {
+                    throw new RuntimeException("can't find getLikeButtonOnClickMethod");
                 }
-
-                if (maxK > -1) {
-                    m_likeButtonOnClick = findMethodExact(playerActivity + "$" + maxK, classLoader, "onClick", View.class);
-                    return m_likeButtonOnClick;
-                }
-
-                throw new RuntimeException("can't find getLikeButtonOnClickMethod");
             }
 
-            return m_likeButtonOnClick;
+            return likeButtonOnClickMethod;
         }
 
-        Object getMusicInfo() throws IllegalAccessException {
-            if (f_musicInfo == null)
-                f_musicInfo = XposedHelpers.findFirstFieldByExactType(playerActivity.getClass(), MusicInfo.getClazz());
+        public Object getMusicInfo() throws IllegalAccessException {
+            if (musicInfoField == null) {
+                musicInfoField = XposedHelpers.findFirstFieldByExactType(playerActivity.getClass(), MusicInfo.getClazz());
+            }
 
-            return f_musicInfo.get(playerActivity);
+            return musicInfoField.get(playerActivity);
         }
     }
 
-    static class Transfer {
-        private static Method m_calcMd5;
+    public static class Transfer {
+        private static Method calcMd5Method;
 
-        static Method getCalcMd5Method() throws IllegalAccessException, PackageManager.NameNotFoundException {
-            if (m_calcMd5 == null) {
+        public static Method getCalcMd5Method() throws IllegalAccessException, PackageManager.NameNotFoundException {
+            if (calcMd5Method == null) {
                 Pattern pattern = Pattern.compile("^com\\.netease\\.cloudmusic\\.module\\.transfer\\.[a-z]\\.[a-z]$");
-                List<String> list = getFilteredClasses(pattern, Collections.<String>reverseOrder());
-                for (String curStr : list) {
-                    for (Method m : XposedHelpers.findClass(curStr, classLoader).getDeclaredMethods()) {
-                        Class[] params = m.getParameterTypes();
-                        if (params.length == 2 && params[0] == File.class) {
-                            m_calcMd5 = m;
-                            return m_calcMd5;
-                        }
-                    }
+                List<String> list = getFilteredClasses(pattern, Collections.reverseOrder());
+
+                try {
+                    calcMd5Method = Stream.of(list)
+                            .map(c -> findClass(c, classLoader).getDeclaredMethods())
+                            .flatMap(Stream::of)
+                            .filter(m -> m.getReturnType() == String.class)
+                            .filter(m -> m.getParameterTypes().length == 2)
+                            .filter(m -> m.getParameterTypes()[0] == File.class)
+                            .findFirst()
+                            .get();
+                } catch (NoSuchElementException e) {
+                    throw new RuntimeException("can't find getCalcMd5Method");
                 }
-                throw new RuntimeException("can't find getCalcMd5Method");
             }
-            return m_calcMd5;
+            return calcMd5Method;
         }
     }
 
     static class E {
         private static Class clazz;
-        private static Method m_showToastWithContext;
+        private static Method showToastWithContextMethod;
 
         static Class getClazz() throws IllegalAccessException, PackageManager.NameNotFoundException {
             if (clazz == null) {
                 Pattern pattern = Pattern.compile("^com\\.netease\\.cloudmusic\\.[a-z]$");
-                List<String> list = getFilteredClasses(pattern, Collections.<String>reverseOrder());
-                for (String curStr : list) {
-                    Class curClass = XposedHelpers.findClass(curStr, classLoader);
-                    Field[] fields = curClass.getDeclaredFields();
-                    boolean findPattern = false;
-                    boolean findUi = false;
-                    for (Field field : fields) {
-                        if (!findPattern && field.getType().equals(pattern.getClass())) {
-                            findPattern = true;
-                        }
-                        if (!findUi && field.getType().getName().startsWith("com.netease.cloudmusic.ui.")) {
-                            findUi = true;
-                        }
-                        if (findPattern && findUi) {
-                            clazz = curClass;
-                            return clazz;
-                        }
-                    }
-                }
+                List<String> list = getFilteredClasses(pattern, Collections.reverseOrder());
+                clazz = Stream.of(list)
+                        .map(s -> findClass(s, classLoader))
+                        .filter(c -> Stream.of(c.getDeclaredFields()).anyMatch(f -> f.getType() == Pattern.class))
+                        .filter(c -> Stream.of(c.getDeclaredFields()).anyMatch(f -> f.getType().getName().startsWith("com.netease.cloudmusic.ui.")))
+                        .findFirst().get();
             }
             return clazz;
         }
 
         static void showToast(final String text) {
-            Utility.postDelayed(new Runnable() {
-                @Override
-                public void run() {
-                    try {
-                        // Toast.makeText(NeteaseMusicApplication.getApplication(), text, Toast.LENGTH_SHORT).show();
-                        E.getShowToastWithContextMethod().invoke(null, null, text);
-                    } catch (Throwable t) {
-                        log(t);
-                    }
+            Utility.postDelayed(() -> {
+                try {
+                    // Toast.makeText(NeteaseMusicApplication.getApplication(), text, Toast.LENGTH_SHORT).show();
+                    E.getShowToastWithContextMethod().invoke(null, null, text);
+                } catch (Throwable t) {
+                    log(t);
                 }
             }, 0);
         }
 
         static Method getShowToastWithContextMethod() throws PackageManager.NameNotFoundException, IllegalAccessException {
-            if (m_showToastWithContext == null) {
-                m_showToastWithContext = findMethodExact(getClazz(), "a", Context.class, String.class);
+            if (showToastWithContextMethod == null) {
+                showToastWithContextMethod = findMethodExact(getClazz(), "a", Context.class, String.class);
             }
-            return m_showToastWithContext;
+            return showToastWithContextMethod;
         }
 
         static List<Method> getSuspectedShowToastMethods() throws PackageManager.NameNotFoundException, IllegalAccessException {
             List<Method> ret = new ArrayList<>();
-            for (Method method : getClazz().getMethods()) {
-                if (method.getParameterTypes().length == 1
-                        && method.getParameterTypes()[0].equals(String.class)
-                        && method.getReturnType() == Void.TYPE
-                        && Modifier.isStatic(method.getModifiers())) {
-                    ret.add(method);
+            Stream.of(getClazz().getMethods())
+                    .filter(m -> m.getParameterTypes().length == 1)
+                    .filter(m -> m.getParameterTypes()[0].equals(String.class))
+                    .filter(m -> m.getReturnType() == Void.TYPE)
+                    .filter(m -> Modifier.isStatic(m.getModifiers()))
+                    .forEach(ret::add);
+            return ret;
+        }
+
+    }
+
+    public static class Okhttp {
+        static void init() throws PackageManager.NameNotFoundException, IllegalAccessException {
+            RequestBuilder.init();
+        }
+
+        public static class RequestBuilder {
+            static Field headerBuilderField;
+            static Field httpUrlField;
+            static Method buildMethod;
+            static Class clazz;
+            final Object o;
+
+            public RequestBuilder(Object o) {
+                this.o = o;
+            }
+
+            public static Method getBuildMethod() {
+                return buildMethod;
+            }
+
+            static void init() throws PackageManager.NameNotFoundException, IllegalAccessException {
+                Pattern pattern = Pattern.compile("^okhttp3\\.[a-z]+\\$[a-z]+$", Pattern.CASE_INSENSITIVE);
+                List<String> list = getFilteredClasses(pattern, Collections.reverseOrder());
+
+                clazz = Stream.of(list)
+                        .map(s -> findClass(s, getClassLoader()))
+                        .filter(c -> Modifier.isPublic(c.getModifiers()))
+                        .filter(c -> Stream.of(c.getDeclaredFields()).anyMatch(f -> f.getType() == Object.class))
+                        .filter(c -> Stream.of(c.getDeclaredFields()).anyMatch(f -> f.getType() == String.class))
+                        .filter(c -> Stream.of(c.getDeclaredFields()).anyMatch(f -> f.getType().getName().contains("$")))
+                        .findFirst()
+                        .get();
+
+
+                if (clazz != null) {
+
+                    // Header
+                    headerBuilderField = Stream.of(clazz.getDeclaredFields())
+                            .filter(f -> f.getType().getName().startsWith("okhttp3"))
+                            .filter(f -> f.getType().getName().contains("$"))
+                            .findFirst().get();
+
+                    headerBuilderField.setAccessible(true);
+                    HeaderBuilder.init(headerBuilderField.getType());
+
+
+                    // HttpUrl
+                    httpUrlField = Stream.of(clazz.getDeclaredFields())
+                            .filter(f -> f.getType().getName().startsWith("okhttp3"))
+                            .filter(f -> !f.getType().getName().contains("$"))
+                            .filter(f -> Modifier.isPublic(f.getType().getModifiers()))
+                            .filter(f -> Modifier.isFinal(f.getType().getModifiers()))
+                            .findFirst().get();
+
+                    httpUrlField.setAccessible(true);
+                    HttpUrl.init(httpUrlField.getType());
+
+
+                    // buildMethod
+                    String okhttpRequest = clazz.getName().substring(0, clazz.getName().lastIndexOf("$"));
+                    buildMethod = Stream.of(clazz.getMethods())
+                            .filter(m -> m.getParameterTypes().length == 0)
+                            .filter(m -> Modifier.isPublic(m.getModifiers()))
+                            .filter(m -> !Modifier.isStatic(m.getModifiers()))
+                            .filter(m -> m.getReturnType().getName().equals(okhttpRequest))
+                            .findFirst().get();
+
+                }
+
+
+            }
+
+            Object getHeader() throws IllegalAccessException {
+                return headerBuilderField.get(o);
+            }
+
+            public HeaderBuilder getHeaderBuilderWrapper() throws IllegalAccessException {
+                return new HeaderBuilder(getHeader());
+            }
+
+            public String getUrl() throws IllegalAccessException {
+                return httpUrlField.get(o).toString();
+            }
+
+            public void setUrl(String str) throws InvocationTargetException, IllegalAccessException {
+                httpUrlField.set(o, HttpUrl.parseUrl(str));
+            }
+        }
+
+        static class HttpUrl {
+            static Method parseMethod;
+            static Class clazz;
+
+            static void init(Class clazz) {
+                HttpUrl.clazz = clazz;
+
+                parseMethod = Stream.of(clazz.getMethods())
+                        .filter(m -> Modifier.isStatic(m.getModifiers()))
+                        .filter(m -> m.getReturnType() == clazz)
+                        .filter(m -> m.getParameterTypes().length == 1)
+                        .filter(m -> m.getParameterTypes()[0] == String.class)
+                        .findFirst()
+                        .get();
+
+
+            }
+
+            static Object parseUrl(String str) throws InvocationTargetException, IllegalAccessException {
+                return parseMethod.invoke(null, str);
+
+            }
+        }
+
+        public static class HeaderBuilder {
+            static Class clazz;
+            static Field headerListField;
+            final Object o;
+
+            HeaderBuilder(Object o) {
+                this.o = o;
+            }
+
+            static void init(Class clazz) {
+                HeaderBuilder.clazz = clazz;
+
+                headerListField = Stream.of(clazz.getDeclaredFields())
+                        .filter(f -> f.getType() == List.class)
+                        .findFirst()
+                        .get();
+
+                headerListField.setAccessible(true);
+
+            }
+
+            public String get(String name) throws IllegalAccessException {
+                List l = (List) headerListField.get(o);
+                for (int i = 0; i < l.size(); i += 2) {
+                    if (name.equals(l.get(i))) {
+                        return l.get(i + 1).toString();
+                    }
+                }
+                return null;
+            }
+
+
+            @SuppressWarnings("unchecked")
+            public void set(String name, String value) throws IllegalAccessException {
+                removeAll(name);
+
+                List l = (List) headerListField.get(o);
+                l.add(name);
+                l.add(value);
+            }
+
+            public void removeAll(String name) throws IllegalAccessException {
+                List l = (List) headerListField.get(o);
+                for (int i = 0; i < l.size(); i += 2) {
+                    if (l.get(i).equals(name)) {
+                        l.remove(i);
+                        l.remove(i);
+                        i -= 2;
+                    }
                 }
             }
-            return ret;
         }
 
     }

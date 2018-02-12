@@ -12,10 +12,12 @@
     <string name="hint_reboot_setting_changed">重启或结束音乐软件进程后生效</string>
     <string name="hint_reboot_not_active">模块未激活，请先激活模块并重启手机</string>
 
+    <string name="unblock_title">开关</string>
+
     <string name="oversea_mode_title">海外模式</string>
     <string name="oversea_mode_description">国内用户切勿勾选，否则会降低缓冲速度</string>
 
-    <string name="dislike_confirm_title">取消红心前确认</string>
+    <string name="dislike_confirm_title">在取消红心前请求确认</string>
     <string name="dislike_confirm_question">确定取消红心？</string>
 
     <string name="prevent_gray_title">不变灰</string>

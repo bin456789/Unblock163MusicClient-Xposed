@@ -35,6 +35,6 @@
             tools:ignore="ManifestResource" />
         <meta-data
             android:name="xposedminversion"
-            android:value="54" />
+            android:value="53" />
     </application>
 </manifest>

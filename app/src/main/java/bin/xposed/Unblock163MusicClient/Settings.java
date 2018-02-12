@@ -4,7 +4,7 @@ import java.lang.ref.WeakReference;
 
 import de.robv.android.xposed.XSharedPreferences;
 
-class Settings {
+public class Settings {
     private static WeakReference<XSharedPreferences> xSharedPreferences = new WeakReference<>(null);
 
     private static XSharedPreferences getModuleSharedPreferences() {
@@ -20,15 +20,19 @@ class Settings {
     }
 
 
-    static boolean isOverseaModeEnabled() {
+    public static boolean isUnblockEnabled() {
+        return getModuleSharedPreferences().getBoolean("UNBLOCK", false);
+    }
+
+    public static boolean isOverseaModeEnabled() {
         return getModuleSharedPreferences().getBoolean("OVERSEA_MODE", false);
     }
 
-    static boolean isConfirmDislikeEnabled() {
+    public static boolean isConfirmDislikeEnabled() {
         return getModuleSharedPreferences().getBoolean("DISLIKE_CONFIRM", false);
     }
 
-    static boolean isPreventGray() {
+    public static boolean isPreventGrayEnabled() {
         return getModuleSharedPreferences().getBoolean("PREVENT_GRAY", false);
     }
 

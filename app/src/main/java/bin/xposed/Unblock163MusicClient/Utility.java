@@ -5,7 +5,6 @@ import android.content.pm.PackageManager;
 import android.content.res.Resources;
 import android.text.TextUtils;
 
-import org.apache.http.cookie.Cookie;
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -24,25 +23,28 @@ import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
+import java.lang.reflect.InvocationTargetException;
+import java.net.InetAddress;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.HashMap;
 import java.util.Iterator;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.regex.Pattern;
 
-import de.robv.android.xposed.XposedBridge;
-
 import static android.os.Looper.getMainLooper;
+import static de.robv.android.xposed.XposedBridge.log;
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
 import static de.robv.android.xposed.XposedHelpers.findClass;
 
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class Utility {
+    private static Map<String, InetAddress[]> cache = new HashMap<>();
     private static SimpleResolver cnDnsResolver;
     private static WeakReference<Resources> moduleResources = new WeakReference<>(null);
 
@@ -63,10 +65,11 @@ public class Utility {
         boolean first = true;
         Iterator<String> keys = json.keys();
         while (keys.hasNext()) {
-            if (first)
+            if (first) {
                 first = false;
-            else
+            } else {
                 result.append("&");
+            }
 
             String key = keys.next();
             Object val = json.get(key);
@@ -86,10 +89,11 @@ public class Utility {
         boolean first = true;
 
         for (Map.Entry<String, String> entry : dataMap.entrySet()) {
-            if (first)
+            if (first) {
                 first = false;
-            else
+            } else {
                 result.append("&");
+            }
 
             result.append(URLEncoder.encode(entry.getKey(), "UTF-8"));
             result.append("=");
@@ -100,25 +104,35 @@ public class Utility {
     }
 
     @SuppressWarnings("deprecation")
-    static String serialCookies(List<Cookie> cookieList) throws UnsupportedEncodingException, JSONException {
+    static String serialCookies(List cookieList, Map<String, String> cookieMethods, String filterDomain) throws UnsupportedEncodingException, JSONException {
         StringBuilder result = new StringBuilder();
         boolean first = true;
-        for (Cookie cookie : cookieList) {
-            if (first)
-                first = false;
-            else
-                result.append("; ");
+        for (Object cookie : cookieList) {
 
-            result.append(URLEncoder.encode(cookie.getName(), "UTF-8"));
-            result.append("=");
-            result.append(URLEncoder.encode(cookie.getValue(), "UTF-8"));
+            String domain = (String) callMethod(cookie, cookieMethods.get("domain"));
+            if (filterDomain == null || filterDomain.equals(domain)) {
+                if (first) {
+                    first = false;
+                } else {
+                    result.append("; ");
+                }
+
+                String name = (String) callMethod(cookie, cookieMethods.get("name"));
+                String value = (String) callMethod(cookie, cookieMethods.get("value"));
+
+                result.append(URLEncoder.encode(name, "UTF-8"));
+                result.append("=");
+                result.append(URLEncoder.encode(value, "UTF-8"));
+            }
         }
         return result.toString();
     }
 
+
     static String getIpByHost(String domain) throws UnknownHostException, TextParseException {
-        if (cnDnsResolver == null)
+        if (cnDnsResolver == null) {
             cnDnsResolver = new SimpleResolver(Settings.getDnsServer());
+        }
 
         // caches mechanism built-in, just look it up
         Lookup lookup = new Lookup(domain, Type.A);
@@ -132,12 +146,31 @@ public class Utility {
         }
     }
 
+    public static InetAddress[] getIpByHostViaHttpDns(String domain) throws IOException, InvocationTargetException, IllegalAccessException, JSONException {
+        if (cache.containsKey(domain)) {
+            return cache.get(domain);
+        } else {
+            String raw = Http.get(String.format("http://119.29.29.29/d?dn=%s&ip=119.29.29.29", domain), false)
+                    .getResponseText();
+            String[] ss = raw.replaceAll("[ \r\n]", "").split(";");
+
+
+            InetAddress[] ips = new InetAddress[ss.length];
+            for (int i = 0; i < ss.length; i++) {
+                ips[i] = InetAddress.getByAddress(domain, InetAddress.getByName(ss[i]).getAddress());
+            }
+            cache.put(domain, ips);
+            return ips;
+        }
+    }
+
     static String optString(JSONObject json, String key) {
         // http://code.google.com/p/android/issues/detail?id=13830
-        if (json.isNull(key))
+        if (json.isNull(key)) {
             return null;
-        else
+        } else {
             return json.optString(key, null);
+        }
     }
 
     static Map<String, String> queryToMap(String dataString) {
@@ -179,10 +212,11 @@ public class Utility {
                 boolean isFirstLine = true;
                 while ((line = input.readLine()) != null) {
                     sb.append(line);
-                    if (isFirstLine)
+                    if (isFirstLine) {
                         isFirstLine = false;
-                    else
+                    } else {
                         sb.append(System.getProperty("line.separator"));
+                    }
                 }
             } finally {
                 try {
@@ -190,7 +224,7 @@ public class Utility {
                         input.close();
                     }
                 } catch (IOException e) {
-                    XposedBridge.log(e);
+                    log(e);
                 }
             }
             return sb.toString();
@@ -215,7 +249,7 @@ public class Utility {
     }
 
     static File[] findFiles(File dir, final String start, final String end, final Integer limit) {
-        if (dir != null && dir.exists() && dir.isDirectory())
+        if (dir != null && dir.exists() && dir.isDirectory()) {
             return dir.listFiles(new FilenameFilter() {
                 int find = 0;
 
@@ -226,11 +260,12 @@ public class Utility {
                             && (TextUtils.isEmpty(end) || s.endsWith(end))) {
                         find++;
                         return true;
-                    } else
+                    } else {
                         return false;
+                    }
                 }
             });
-        else {
+        } else {
             return null;
         }
     }
@@ -263,14 +298,16 @@ public class Utility {
         List<Field> returnFs = new ArrayList<>();
 
         for (Field f : fs) {
-            if (returnFs.size() == limit)
+            if (returnFs.size() == limit) {
                 break;
+            }
 
             String s = f.getType().getName();
             if ((TextUtils.isEmpty(exact) || s.equals(exact))
                     && (TextUtils.isEmpty(start) || s.startsWith(start))
-                    && (TextUtils.isEmpty(end) || s.endsWith(end)))
+                    && (TextUtils.isEmpty(end) || s.endsWith(end))) {
                 returnFs.add(f);
+            }
 
         }
         return returnFs.toArray(new Field[returnFs.size()]);
@@ -319,7 +356,7 @@ public class Utility {
         }
     }
 
-    static boolean isCallFromMyself() {
+    public static boolean isCallFromMyself() {
         StackTraceElement[] elements = Thread.currentThread().getStackTrace();
         boolean findAppStack = false;
         boolean findModStack = false;
@@ -359,16 +396,18 @@ public class Utility {
             if (isDigit(c)) {
                 while (marker < slength) {
                     c = s.charAt(marker);
-                    if (!isDigit(c))
+                    if (!isDigit(c)) {
                         break;
+                    }
                     chunk.append(c);
                     marker++;
                 }
             } else {
                 while (marker < slength) {
                     c = s.charAt(marker);
-                    if (isDigit(c))
+                    if (isDigit(c)) {
                         break;
+                    }
                     chunk.append(c);
                     marker++;
                 }
@@ -376,6 +415,7 @@ public class Utility {
             return chunk.toString();
         }
 
+        @Override
         public int compare(String s1, String s2) {
             int thisMarker = 0;
             int thatMarker = 0;
@@ -390,7 +430,7 @@ public class Utility {
                 thatMarker += thatChunk.length();
 
                 int result;
-                if (isDigit(thisChunk.charAt(0)) && isDigit(thatChunk.charAt(0))) {
+                if (isDigit(thisChunk.charAt(0)) == isDigit(thatChunk.charAt(0))) {
                     int thisChunkLength = thisChunk.length();
                     result = thisChunkLength - thatChunk.length();
                     if (result == 0) {
@@ -405,8 +445,9 @@ public class Utility {
                     result = thisChunk.compareTo(thatChunk);
                 }
 
-                if (result != 0)
+                if (result != 0) {
                     return result;
+                }
             }
 
             return s1Length - s2Length;

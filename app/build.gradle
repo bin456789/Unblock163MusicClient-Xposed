@@ -2,7 +2,7 @@ apply plugin: 'com.android.application'
 
 android {
     compileSdkVersion 27
-    buildToolsVersion '27.0.2'
+    buildToolsVersion '27.0.3'
     useLibrary 'org.apache.http.legacy'
     signingConfigs {
         release {
@@ -25,7 +25,7 @@ android {
         applicationId "bin.xposed.Unblock163MusicClient"
         minSdkVersion 9
         targetSdkVersion 27
-        versionCode 24
+        versionCode 25
         versionName = "0.0.${versionCode}"
         archivesBaseName = "${applicationId}-${versionName}"
     }
@@ -41,10 +41,15 @@ android {
     lintOptions {
         abortOnError false
     }
+    compileOptions {
+        sourceCompatibility JavaVersion.VERSION_1_8
+        targetCompatibility JavaVersion.VERSION_1_8
+    }
 }
 
 dependencies {
     provided 'de.robv.android.xposed:api:53'
     provided 'de.robv.android.xposed:api:53:sources'
-    compile 'dnsjava:dnsjava:2.1.8'
+    implementation 'dnsjava:dnsjava:2.1.8'
+    implementation 'com.annimon:stream:1.1.9'
 }

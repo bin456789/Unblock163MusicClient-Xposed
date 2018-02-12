@@ -18,7 +18,6 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
-import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -27,7 +26,7 @@ import java.util.regex.Pattern;
 import static bin.xposed.Unblock163MusicClient.CloudMusicPackage.E.showToast;
 import static de.robv.android.xposed.XposedBridge.log;
 
-class Handler {
+public class Handler {
     private static final String XAPI = "http://xmusic.xmusic.top/xapi/v1/";
     private static final Date DOMAIN_EXPIRED_DATE = new GregorianCalendar(2018, 10 - 1, 1).getTime();
     private static final Pattern REX_PL = Pattern.compile("\"pl\":(?!999000)\\d+");
@@ -46,14 +45,14 @@ class Handler {
         return Calendar.getInstance().getTime().after(DOMAIN_EXPIRED_DATE);
     }
 
-    static String modifyByRegex(String originalContent) {
+    public static String modifyByRegex(String originalContent) {
         originalContent = REX_PL.matcher(originalContent).replaceAll("\"pl\":320000");
         originalContent = REX_DL.matcher(originalContent).replaceAll("\"dl\":320000");
         originalContent = REX_SUBP.matcher(originalContent).replaceAll("\"subp\":1");
         return originalContent;
     }
 
-    static String modifyPlayerOrDownloadApi(String originalContent, Object eapiObj, final String from) throws JSONException {
+    public static String modifyPlayerOrDownloadApi(String originalContent, Object eapiObj, final String from) throws JSONException {
         JSONObject originalJson = new JSONObject(originalContent);
         String path = new CloudMusicPackage.HttpEapi(eapiObj).getPath();
 
@@ -73,20 +72,16 @@ class Handler {
         Object data = originalJson.get("data");
         if (data instanceof JSONObject) {
             JSONObject originalSong = (JSONObject) data;
-            if (processSong(originalSong, expectBitrate, from))
+            if (processSong(originalSong, expectBitrate, from)) {
                 isModified = true;
+            }
         } else {
             JSONArray originalSongs = (JSONArray) data;
             Set<Future<Boolean>> futureSet = new HashSet<>();
             final int finalExpectBitrate = expectBitrate;
             for (int i = 0; i < originalSongs.length(); i++) {
                 final JSONObject songJson = originalSongs.getJSONObject(i);
-                futureSet.add(handlerPool.submit(new Callable<Boolean>() {
-                    @Override
-                    public Boolean call() {
-                        return processSong(songJson, finalExpectBitrate, from);
-                    }
-                }));
+                futureSet.add(handlerPool.submit(() -> processSong(songJson, finalExpectBitrate, from)));
             }
             for (Future<Boolean> booleanFuture : futureSet) {
                 try {
@@ -99,13 +94,14 @@ class Handler {
             }
         }
 
-        if (isModified)
+        if (isModified) {
             return originalJson.toString();
-        else
+        } else {
             return originalContent;
+        }
     }
 
-    static String modifyPlaylistManipulateApi(String originalContent, Object eapiObj) throws Throwable {
+    public static String modifyPlaylistManipulateApi(String originalContent, Object eapiObj) throws Throwable {
         JSONObject originalJson = new JSONObject(originalContent);
         int code = originalJson.getInt("code");
         if (code == 502) {
@@ -126,7 +122,7 @@ class Handler {
         return originalContent;
     }
 
-    static String modifyLike(String originalContent, Object eapiObj) throws Throwable {
+    public static String modifyLike(String originalContent, Object eapiObj) throws Throwable {
         JSONObject originalJson = new JSONObject(originalContent);
         int code = originalJson.getInt("code");
         if (code != 200) {
@@ -142,7 +138,7 @@ class Handler {
         return originalContent;
     }
 
-    static String modifyPub(String originalContent, Object eapiObj) throws Throwable {
+    public static String modifyPub(String originalContent, Object eapiObj) throws Throwable {
         JSONObject originalJson = new JSONObject(originalContent);
         int code = originalJson.getInt("code");
         if (code != 200) {
@@ -159,15 +155,17 @@ class Handler {
 
     private static boolean processSong(JSONObject oldSongJson, int expectBr, String from) {
         // 异常在这方法里处理，防止影响下一曲
-        if (oldSongJson == null)
+        if (oldSongJson == null) {
             return false;
+        }
 
         try {
             Song oldSong = Song.parseFromOther(oldSongJson);
 
             // 云盘
-            if (oldSong.uf != null)
+            if (oldSong.uf != null) {
                 return false;
+            }
 
             // 原始 mp3 可以连接
             if (oldSong.br > 0 && oldSong.url != null) {
@@ -393,12 +391,18 @@ class Handler {
                 if (br >= minBr && songsJson.has(quality) && !songsJson.isNull(quality)) {
                     Song song = Song.parseFromDetail(songsJson.getJSONObject(quality), songId, br);
                     if (song != null && song.url != null) {
-                        if (song.checkAccessible())
+                        String pUrl = song.url;
+                        if (song.checkAccessible()) {
                             return song;
+                        }
 
-                        song.url = convertPtoM(song.url);
-                        if (song.checkAccessible())
-                            return song;
+                        if (pUrl.startsWith("http://p")) {
+                            song.url = convertPtoM(pUrl);
+                            song.accessible = null;
+                            if (song.checkAccessible()) {
+                                return song;
+                            }
+                        }
                     }
                 }
             }

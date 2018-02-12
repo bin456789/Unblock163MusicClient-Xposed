@@ -1,15 +1,21 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
     <CheckBoxPreference
         android:defaultValue="false"
+        android:key="UNBLOCK"
+        android:title="@string/unblock_title" />
+    <CheckBoxPreference
+        android:defaultValue="false"
+        android:dependency="UNBLOCK"
         android:key="OVERSEA_MODE"
         android:summary="@string/oversea_mode_description"
         android:title="@string/oversea_mode_title" />
     <CheckBoxPreference
         android:defaultValue="false"
-        android:key="DISLIKE_CONFIRM"
-        android:title="@string/dislike_confirm_title" />
-    <CheckBoxPreference
-        android:defaultValue="false"
+        android:dependency="UNBLOCK"
         android:key="PREVENT_GRAY"
         android:title="@string/prevent_gray_title" />
+    <CheckBoxPreference
+        android:defaultValue="false"
+        android:key="DISLIKE_CONFIRM"
+        android:title="@string/dislike_confirm_title" />
 </PreferenceScreen>
