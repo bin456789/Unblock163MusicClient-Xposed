@@ -25,7 +25,7 @@ android {
         applicationId "bin.xposed.Unblock163MusicClient"
         minSdkVersion 9
         targetSdkVersion 27
-        versionCode 25
+        versionCode 26
         versionName = "0.0.${versionCode}"
         archivesBaseName = "${applicationId}-${versionName}"
     }
@@ -48,8 +48,30 @@ android {
 }
 
 dependencies {
-    provided 'de.robv.android.xposed:api:53'
-    provided 'de.robv.android.xposed:api:53:sources'
+    compileOnly 'de.robv.android.xposed:api:53'
+    compileOnly 'de.robv.android.xposed:api:53:sources'
     implementation 'dnsjava:dnsjava:2.1.8'
-    implementation 'com.annimon:stream:1.1.9'
+    implementation 'com.annimon:stream:1.2.0'
+}
+
+afterEvaluate {
+    installDebug.doLast {
+        updateVirtualXposedAPP.execute()
+        rebootVirtualXposedAPP.execute()
+        launchVirtualXposedAPP.execute()
+    }
+}
+
+task updateVirtualXposedAPP(type: Exec) {
+    def pkg = android.defaultConfig.applicationId
+    commandLine android.adbExecutable, 'shell', 'am', 'broadcast', '-a', 'io.va.exposed.CMD', '-e', 'cmd', 'update', '-e', 'pkg', pkg
+}
+
+task rebootVirtualXposedAPP(type: Exec) {
+    commandLine android.adbExecutable, 'shell', 'am', 'broadcast', '-a', 'io.va.exposed.CMD', '-e', 'cmd', 'reboot'
+}
+
+task launchVirtualXposedAPP(type: Exec) {
+    def pkg = "com.netease.cloudmusic"
+    commandLine android.adbExecutable, 'shell', 'am', 'broadcast', '-a', 'io.va.exposed.CMD', '-e', 'cmd', 'launch', '-e', 'pkg', pkg
 }

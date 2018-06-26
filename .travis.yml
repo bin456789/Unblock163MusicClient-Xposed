@@ -26,7 +26,7 @@ script:
 
 before_deploy:
   - cp app/build/outputs/apk/release/*-release.apk ~
-  - export APK_PATH=$(ls -d -1 ~/*-release.apk)
+  - export APK_PATH=$(readlink -f ~/*-release.apk)
   - echo $APK_PATH
 
 deploy:
@@ -42,4 +42,4 @@ after_deploy:
   - rvm install 2.2.2
   - rvm use 2.2.2
   - gem install fir-cli
-  - fir p $APK_PATH -T $FIR_TOKEN -c "`git cat-file tag $TRAVIS_TAG`"
+  - fir p $APK_PATH -T $FIR_TOKEN -c "$(git log -1 $TRAVIS_TAG)"
