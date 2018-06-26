@@ -5,6 +5,8 @@ import java.lang.ref.WeakReference;
 import de.robv.android.xposed.XSharedPreferences;
 
 public class Settings {
+    private static String chinaIP;
+
     private static WeakReference<XSharedPreferences> xSharedPreferences = new WeakReference<>(null);
 
     private static XSharedPreferences getModuleSharedPreferences() {
@@ -40,4 +42,15 @@ public class Settings {
         return "219.141.140.10";
     }
 
+
+    public static String getChinaIP() {
+        if (chinaIP == null) {
+            chinaIP = String.format("%s.%s.%s.%s",
+                    111,
+                    Utility.randInt(1, 63),
+                    Utility.randInt(1, 255),
+                    Utility.randInt(1, 254));
+        }
+        return chinaIP;
+    }
 }

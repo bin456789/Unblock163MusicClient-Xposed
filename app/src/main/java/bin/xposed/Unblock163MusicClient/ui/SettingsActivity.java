@@ -71,8 +71,12 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         }
     }
 
+    private boolean isVXP() {
+        return System.getProperty("vxp") != null;
+    }
+
     private void checkIcon() {
-        if (Utility.isAppInstalled(this, "de.robv.android.xposed.installer")) {
+        if (!isVXP() && Utility.isAppInstalled(this, "de.robv.android.xposed.installer")) {
             final ComponentName aliasName = new ComponentName(this, SettingsActivity.this.getClass().getName() + "Alias");
             final PackageManager packageManager = getPackageManager();
             if (packageManager.getComponentEnabledSetting(aliasName) != PackageManager.COMPONENT_ENABLED_STATE_DISABLED) {

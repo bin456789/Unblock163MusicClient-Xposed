@@ -25,15 +25,17 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
+import java.net.URI;
+import java.net.URISyntaxException;
 import java.net.URLEncoder;
 import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.Iterator;
-import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Random;
 import java.util.regex.Pattern;
 
 import static android.os.Looper.getMainLooper;
@@ -44,7 +46,7 @@ import static de.robv.android.xposed.XposedHelpers.findClass;
 
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class Utility {
-    private static Map<String, InetAddress[]> cache = new HashMap<>();
+    private static Map<String, InetAddress[]> dnsCache = new HashMap<>();
     private static SimpleResolver cnDnsResolver;
     private static WeakReference<Resources> moduleResources = new WeakReference<>(null);
 
@@ -104,7 +106,7 @@ public class Utility {
     }
 
     @SuppressWarnings("deprecation")
-    static String serialCookies(List cookieList, Map<String, String> cookieMethods, String filterDomain) throws UnsupportedEncodingException, JSONException {
+    static String serialCookies(List cookieList, Map<String, String> cookieMethods, String filterDomain) throws UnsupportedEncodingException {
         StringBuilder result = new StringBuilder();
         boolean first = true;
         for (Object cookie : cookieList) {
@@ -147,8 +149,8 @@ public class Utility {
     }
 
     public static InetAddress[] getIpByHostViaHttpDns(String domain) throws IOException, InvocationTargetException, IllegalAccessException, JSONException {
-        if (cache.containsKey(domain)) {
-            return cache.get(domain);
+        if (dnsCache.containsKey(domain)) {
+            return dnsCache.get(domain);
         } else {
             String raw = Http.get(String.format("http://119.29.29.29/d?dn=%s&ip=119.29.29.29", domain), false)
                     .getResponseText();
@@ -159,7 +161,7 @@ public class Utility {
             for (int i = 0; i < ss.length; i++) {
                 ips[i] = InetAddress.getByAddress(domain, InetAddress.getByName(ss[i]).getAddress());
             }
-            cache.put(domain, ips);
+            dnsCache.put(domain, ips);
             return ips;
         }
     }
@@ -173,15 +175,17 @@ public class Utility {
         }
     }
 
-    static Map<String, String> queryToMap(String dataString) {
-        Map<String, String> dataMap = new LinkedHashMap<>();
-        if (!TextUtils.isEmpty(dataString)) {
-            for (String s : dataString.split("&")) {
+    static Map<String, String> combineRequestData(String path, Map<String, String> dataMap) throws URISyntaxException {
+        Map<String, String> map = dataMap != null ? dataMap : new HashMap<>();
+
+        String query = new URI(path).getQuery();
+        if (!TextUtils.isEmpty(query)) {
+            for (String s : query.split("&")) {
                 String[] data = s.split("=");
-                dataMap.put(data[0], data[1]);
+                map.put(data[0], data[1]);
             }
         }
-        return dataMap;
+        return map;
     }
 
     static Context getSystemContext() {
@@ -189,7 +193,7 @@ public class Utility {
         return (Context) callMethod(activityThread, "getSystemContext");
     }
 
-    static Resources getModuleResources() throws PackageManager.NameNotFoundException, IllegalAccessException {
+    static Resources getModuleResources() throws PackageManager.NameNotFoundException {
         Resources resources = moduleResources.get();
         if (resources == null) {
             resources = getSystemContext().createPackageContext(BuildConfig.APPLICATION_ID, Context.CONTEXT_IGNORE_SECURITY).getResources();
@@ -379,6 +383,11 @@ public class Utility {
 
     public static void postDelayed(Runnable runnable, long delay) {
         new android.os.Handler(getMainLooper()).postDelayed(runnable, delay);
+    }
+
+    public static int randInt(int min, int max) {
+        Random rand = new Random();
+        return rand.nextInt((max - min) + 1) + min;
     }
 
     static class AlphanumComparator implements Comparator<String> {

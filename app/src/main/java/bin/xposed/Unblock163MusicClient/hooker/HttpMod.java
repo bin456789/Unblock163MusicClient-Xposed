@@ -10,6 +10,7 @@ import java.util.regex.Pattern;
 
 import bin.xposed.Unblock163MusicClient.CloudMusicPackage;
 import bin.xposed.Unblock163MusicClient.Hooker;
+import bin.xposed.Unblock163MusicClient.Settings;
 import de.robv.android.xposed.XC_MethodHook;
 
 import static bin.xposed.Unblock163MusicClient.CloudMusicPackage.ClassHelper.getFilteredClasses;
@@ -20,7 +21,7 @@ import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.findClass;
 import static de.robv.android.xposed.XposedHelpers.newInstance;
 
-public class HttpFor3rd extends Hooker {
+public class HttpMod extends Hooker {
 
     @Override
     protected void howToHook() throws Throwable {
@@ -33,8 +34,12 @@ public class HttpFor3rd extends Hooker {
                             String url = requestBuilder.getUrl();
 
                             CloudMusicPackage.Okhttp.HeaderBuilder headersBuilder = requestBuilder.getHeaderBuilderWrapper();
+                            if (url.contains("music.163.com")) {
+                                if (Settings.isOverseaModeEnabled()) {
+                                    headersBuilder.set("X-Real-IP", Settings.getChinaIP());
+                                }
 
-                            if (url.contains("xiami.net")) {
+                            } else if (url.contains("xiami.net")) {
                                 headersBuilder.removeAll("Cookie");
                                 headersBuilder.removeAll("Referer");
                                 headersBuilder.set("User-Agent", "Android");
@@ -94,6 +99,7 @@ public class HttpFor3rd extends Hooker {
                     "determineRoute", new XC_MethodHook() {
                         final Class HttpHost = findMamClass(org.apache.http.HttpHost.class);
                         final Class HttpGet = findMamClass(org.apache.http.client.methods.HttpGet.class);
+                        final Class HttpPost = findMamClass(org.apache.http.client.methods.HttpPost.class);
                         final Class HttpRoute = findMamClass(org.apache.http.conn.routing.HttpRoute.class);
 
                         @Override
@@ -102,10 +108,10 @@ public class HttpFor3rd extends Hooker {
                             Object originalHttpRequest = callMethod(paramHttpRequest, "getOriginal");
                             Object resultHttpRoute = param.getResult();
 
-                            if (HttpGet.isInstance(originalHttpRequest)) {
+                            URI url = (URI) callMethod(originalHttpRequest, "getURI");
+                            String host = url.getHost();
 
-                                URI url = (URI) callMethod(originalHttpRequest, "getURI");
-                                String host = url.getHost();
+                            if (HttpGet.isInstance(originalHttpRequest)) {
 
                                 if (host.endsWith("xiami.net")) {
                                     callMethod(originalHttpRequest, "removeHeaders", "Cookie");
@@ -137,6 +143,10 @@ public class HttpFor3rd extends Hooker {
                                         Object newHttpRoute = newInstance(HttpRoute, newHttpHost, null, false);
                                         param.setResult(newHttpRoute);
                                     }
+                                }
+                            } else if (HttpPost.isInstance(originalHttpRequest)) {
+                                if (host.endsWith("music.163.com") && Settings.isOverseaModeEnabled()) {
+                                    callMethod(originalHttpRequest, "setHeader", "X-Real-IP", Settings.getChinaIP());
                                 }
                             }
                         }

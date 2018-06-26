@@ -19,6 +19,7 @@ import java.lang.reflect.InvocationTargetException;
 import java.lang.reflect.Member;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
+import java.net.URISyntaxException;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
@@ -41,7 +42,6 @@ import static de.robv.android.xposed.XposedHelpers.findConstructorExact;
 import static de.robv.android.xposed.XposedHelpers.findMethodExact;
 import static de.robv.android.xposed.XposedHelpers.findMethodsByExactParameters;
 import static de.robv.android.xposed.XposedHelpers.getAdditionalInstanceField;
-import static de.robv.android.xposed.XposedHelpers.getObjectField;
 import static de.robv.android.xposed.XposedHelpers.setAdditionalInstanceField;
 
 public class CloudMusicPackage {
@@ -296,7 +296,7 @@ public class CloudMusicPackage {
             return clazz;
         }
 
-        static String getDefaultCookie() throws UnsupportedEncodingException, JSONException, InvocationTargetException, IllegalAccessException {
+        static String getDefaultCookie() throws UnsupportedEncodingException, InvocationTargetException, IllegalAccessException {
             if (useOkHttp) {
                 // okHttp 4.x
                 if (cookieUtilClass == null) {
@@ -382,18 +382,22 @@ public class CloudMusicPackage {
         }
 
         @SuppressWarnings("unchecked")
-        public Map<String, String> getRequestMap() {
-            return (Map<String, String>) getAdditionalInstanceField(this.httpBase, "__map");
+        public Map<String, String> getRequestForm() {
+            return (Map<String, String>) getAdditionalInstanceField(this.httpBase, "__form");
         }
 
-        public void setRequestMap(Map<String, String> map) {
-            try {
-                //noinspection unchecked
-                Map<String, String> m = (Map<String, String>) getObjectField(this.httpBase, "__map");
-                m.putAll(map);
-            } catch (Throwable ignored) {
-                setAdditionalInstanceField(this.httpBase, "__map", map);
+        public void setRequestForm(Map<String, String> map) {
+            @SuppressWarnings("unchecked")
+            Map<String, String> form = (Map<String, String>) getAdditionalInstanceField(this.httpBase, "__form");
+            if (form == null) {
+                setAdditionalInstanceField(this.httpBase, "__form", map);
+            } else {
+                form.putAll(map);
             }
+        }
+
+        public Map<String, String> getRequestData() throws URISyntaxException {
+            return Utility.combineRequestData(getPath(), getRequestForm());
         }
 
         public String getPath() {

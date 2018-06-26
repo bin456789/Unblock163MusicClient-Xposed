@@ -33,7 +33,7 @@ public class Eapi extends Hooker {
                     }
                     for (int i = 0; i < param.args.length && i < 2; i++) {
                         if (param.args[i] instanceof Map) {
-                            httpEapi.setRequestMap((Map<String, String>) param.args[i]);
+                            httpEapi.setRequestForm((Map<String, String>) param.args[i]);
                         }
                     }
                 }
@@ -56,23 +56,24 @@ public class Eapi extends Hooker {
                         return;
                     }
 
-                    String path = new CloudMusicPackage.HttpEapi(param.thisObject).getPath();
+                    CloudMusicPackage.HttpEapi eapi = new CloudMusicPackage.HttpEapi(param.thisObject);
+                    String path = eapi.getPath();
                     String modified = null;
 
                     if (path.startsWith("song/enhance/player/url")) {
-                        modified = Handler.modifyPlayerOrDownloadApi(original, param.thisObject, "player");
+                        modified = Handler.modifyPlayerOrDownloadApi(original, eapi, "player");
 
                     } else if (path.startsWith("song/enhance/download/url")) {
-                        modified = Handler.modifyPlayerOrDownloadApi(original, param.thisObject, "download");
+                        modified = Handler.modifyPlayerOrDownloadApi(original, eapi, "download");
 
                     } else if (path.startsWith("v1/playlist/manipulate/tracks")) {
-                        modified = Handler.modifyPlaylistManipulateApi(original, param.thisObject);
+                        modified = Handler.modifyPlaylistManipulateApi(original, eapi);
 
                     } else if (path.startsWith("song/like")) {
-                        modified = Handler.modifyLike(original, param.thisObject);
+                        modified = Handler.modifyLike(original, eapi);
 
                     } else if (path.startsWith("cloud/pub/v2")) {
-                        modified = Handler.modifyPub(original, param.thisObject);
+                        modified = Handler.modifyPub(original, eapi);
 
                     } else if (path.contains("batch")
                             || path.contains("album")

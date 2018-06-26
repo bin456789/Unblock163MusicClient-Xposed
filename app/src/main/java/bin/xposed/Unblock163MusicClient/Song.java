@@ -13,7 +13,6 @@ class Song {
     int code;
     int br;
     int fee;
-    float gain;
     String md5;
     int payed;
     long size;
@@ -33,7 +32,6 @@ class Song {
         song.code = songJson.optInt("code");
         song.br = songJson.optInt("br");
         song.fee = songJson.optInt("fee");
-        song.gain = (float) songJson.optDouble("gain");
         song.md5 = optString(songJson, "md5");
         song.payed = songJson.optInt("payed");
         song.size = songJson.optLong("size");
@@ -50,7 +48,6 @@ class Song {
         if (fid > 0) {
             song.id = id;
             song.br = br;
-            song.gain = (float) songJson.optDouble("vd");
             song.md5 = String.format(Locale.getDefault(), "%032d", fid);
             song.size = songJson.optLong("size");
             song.type = "mp3";
