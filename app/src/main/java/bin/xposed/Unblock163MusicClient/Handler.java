@@ -28,7 +28,7 @@ import static de.robv.android.xposed.XposedBridge.log;
 
 public class Handler {
     private static final String XAPI = "http://xmusic.xmusic.top/xapi/v1/";
-    private static final Date DOMAIN_EXPIRED_DATE = new GregorianCalendar(2018, 10 - 1, 1).getTime();
+    private static final Date DOMAIN_EXPIRED_DATE = new GregorianCalendar(2019, 10 - 1, 1).getTime();
     private static final Pattern REX_PL = Pattern.compile("\"pl\":(?!999000)\\d+");
     private static final Pattern REX_DL = Pattern.compile("\"dl\":(?!999000)\\d+");
     private static final Pattern REX_SUBP = Pattern.compile("\"subp\":\\d+");
