@@ -3,7 +3,7 @@ package bin.xposed.Unblock163MusicClient.hooker;
 import bin.xposed.Unblock163MusicClient.CloudMusicPackage;
 import bin.xposed.Unblock163MusicClient.Hooker;
 import bin.xposed.Unblock163MusicClient.Settings;
-import bin.xposed.Unblock163MusicClient.Utility;
+import bin.xposed.Unblock163MusicClient.Utils;
 import de.robv.android.xposed.XC_MethodHook;
 
 import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
@@ -18,7 +18,7 @@ public class Gray extends Hooker {
             findAndHookMethod(CloudMusicPackage.MusicInfo.getClazz(), "hasCopyRight", new XC_MethodHook() {
                 @Override
                 protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    if (!Utility.isCallFromMyself()) {
+                    if (!Utils.isCallFromMyself()) {
                         param.setResult(true);
                     }
                 }

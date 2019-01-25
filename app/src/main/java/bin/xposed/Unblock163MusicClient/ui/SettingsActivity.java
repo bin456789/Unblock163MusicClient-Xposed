@@ -1,14 +1,16 @@
 package bin.xposed.Unblock163MusicClient.ui;
 
 import android.annotation.SuppressLint;
-import android.app.AlertDialog;
 import android.content.ComponentName;
+import android.content.ContentResolver;
 import android.content.Intent;
 import android.content.SharedPreferences;
 import android.content.SharedPreferences.OnSharedPreferenceChangeListener;
 import android.content.pm.PackageManager;
+import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
+import android.preference.CheckBoxPreference;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
 import android.widget.Toast;
@@ -17,12 +19,30 @@ import java.io.File;
 
 import bin.xposed.Unblock163MusicClient.BuildConfig;
 import bin.xposed.Unblock163MusicClient.R;
-import bin.xposed.Unblock163MusicClient.Utility;
+import bin.xposed.Unblock163MusicClient.Utils;
 
 public class SettingsActivity extends PreferenceActivity implements OnSharedPreferenceChangeListener {
 
-    private int getActivatedModuleVersion() {
-        return -1;
+    CheckBoxPreference hideIconPref;
+
+    private boolean isExpModuleActive() {
+        boolean isExp = false;
+
+        try {
+            ContentResolver contentResolver = getContentResolver();
+            Uri uri = Uri.parse("content://me.weishu.exposed.CP/");
+            Bundle result = contentResolver.call(uri, "active", null, null);
+            if (result == null) {
+                return false;
+            }
+            isExp = result.getBoolean("active", false);
+        } catch (Throwable ignored) {
+        }
+        return isExp;
+    }
+
+    private boolean isModuleActive() {
+        return false;
     }
 
     @SuppressWarnings("deprecation")
@@ -32,29 +52,40 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         setWorldReadable();
         addPreferencesFromResource(R.xml.pref_general);
 
+        setInfo();
+        setIcon();
         checkState();
-        checkIcon();
     }
 
+    private void setInfo() {
+        findPreference("MODVER").setSummary(BuildConfig.VERSION_NAME);
+        findPreference("APPVER").setSummary("5.8.x");
+        findPreference("AUTHOR").setOnPreferenceClickListener(preference -> {
+            openCoolapk();
+            return false;
+        });
+    }
 
     private void checkState() {
-        if (getActivatedModuleVersion() == -1) {
-            showNotActive();
+        String method = null;
+
+        if (isModuleActive()) {
+            method = "Xposed / EdXposed";
+        } else if (isVXP()) {
+            method = "VirtualXposed";
+        } else if (isExpModuleActive()) {
+            method = "太极";
+        }
+
+        if (method != null) {
+            Toast.makeText(this, getString(R.string.hint_active, method), Toast.LENGTH_LONG).show();
+        } else {
+            Toast.makeText(this, getString(R.string.hint_not_active), Toast.LENGTH_LONG).show();
         }
     }
 
-
-    private void showNotActive() {
-        new AlertDialog.Builder(this)
-                .setCancelable(false)
-                .setMessage(R.string.hint_reboot_not_active)
-                .setPositiveButton(R.string.active_now, (dialog, id) -> openXposed())
-                .setNegativeButton(R.string.cancel, null)
-                .show();
-    }
-
     private void openXposed() {
-        if (Utility.isAppInstalled(this, "de.robv.android.xposed.installer")) {
+        if (Utils.isAppInstalled(this, "de.robv.android.xposed.installer")) {
             Intent intent = new Intent("de.robv.android.xposed.installer.OPEN_SECTION");
             if (getPackageManager().queryIntentActivities(intent, 0).isEmpty()) {
                 intent = getPackageManager().getLaunchIntentForPackage("de.robv.android.xposed.installer");
@@ -71,26 +102,31 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         }
     }
 
+    private void openCoolapk() {
+        String pkg = "com.coolapk.market";
+        if (Utils.isAppInstalled(this, pkg)) {
+            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.coolapk.com/u/185162"));
+            intent.setPackage(pkg);
+            startActivity(intent);
+        }
+    }
+
     private boolean isVXP() {
         return System.getProperty("vxp") != null;
     }
 
-    private void checkIcon() {
-        if (!isVXP() && Utility.isAppInstalled(this, "de.robv.android.xposed.installer")) {
-            final ComponentName aliasName = new ComponentName(this, SettingsActivity.this.getClass().getName() + "Alias");
-            final PackageManager packageManager = getPackageManager();
-            if (packageManager.getComponentEnabledSetting(aliasName) != PackageManager.COMPONENT_ENABLED_STATE_DISABLED) {
-                new AlertDialog.Builder(this)
-                        .setCancelable(false)
-                        .setMessage(R.string.hint_hide_icon)
-                        .setPositiveButton(R.string.ok, (dialog, id) -> packageManager.setComponentEnabledSetting(
-                                aliasName,
-                                PackageManager.COMPONENT_ENABLED_STATE_DISABLED,
-                                PackageManager.DONT_KILL_APP)).show();
-            }
-        }
-    }
+    private void setIcon() {
+        ComponentName aliasName = new ComponentName(SettingsActivity.this, SettingsActivity.this.getClass().getName() + "Alias");
+        PackageManager packageManager = getPackageManager();
 
+        hideIconPref = (CheckBoxPreference) findPreference("HIDE_MODULE_ICON");
+        hideIconPref.setChecked(packageManager.getComponentEnabledSetting(aliasName) == PackageManager.COMPONENT_ENABLED_STATE_DISABLED);
+        hideIconPref.setOnPreferenceChangeListener((preference, newValue) -> {
+            int state = (Boolean) newValue ? PackageManager.COMPONENT_ENABLED_STATE_DISABLED : PackageManager.COMPONENT_ENABLED_STATE_ENABLED;
+            packageManager.setComponentEnabledSetting(aliasName, state, PackageManager.DONT_KILL_APP);
+            return true;
+        });
+    }
 
     @SuppressWarnings({"deprecation", "ResultOfMethodCallIgnored"})
     @SuppressLint({"SetWorldReadable", "WorldReadableFiles"})
@@ -128,6 +164,8 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        Toast.makeText(this, R.string.hint_reboot_setting_changed, Toast.LENGTH_SHORT).show();
+        if (sharedPreferences != hideIconPref.getSharedPreferences()) {
+            Toast.makeText(this, R.string.hint_reboot_setting_changed, Toast.LENGTH_SHORT).show();
+        }
     }
 }

@@ -5,7 +5,7 @@ import org.json.JSONObject;
 
 import java.util.Locale;
 
-import static bin.xposed.Unblock163MusicClient.Utility.optString;
+import static bin.xposed.Unblock163MusicClient.Utils.optString;
 import static de.robv.android.xposed.XposedBridge.log;
 
 class Song {
@@ -24,7 +24,8 @@ class Song {
     String matchedSongName;
     String matchedArtistName;
     boolean matchedDuration;
-    Boolean accessible;
+    boolean accessible;
+    boolean accessibleChecked;
 
     static Song parseFromOther(JSONObject songJson) {
         Song song = new Song();
@@ -85,7 +86,7 @@ class Song {
     }
 
     boolean checkAccessible() {
-        if (accessible != null) {
+        if (accessibleChecked) {
             return accessible;
         }
 
@@ -103,6 +104,7 @@ class Song {
                 log(t);
             }
         }
+        accessibleChecked = true;
         return accessible;
     }
 

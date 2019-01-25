@@ -12,7 +12,6 @@ import de.robv.android.xposed.XC_MethodHook;
 import static de.robv.android.xposed.XposedBridge.hookMethod;
 import static de.robv.android.xposed.XposedBridge.invokeOriginalMethod;
 import static de.robv.android.xposed.XposedBridge.log;
-import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
 import static de.robv.android.xposed.XposedHelpers.getObjectField;
 
 public class Dislike extends Hooker {
@@ -29,13 +28,14 @@ public class Dislike extends Hooker {
                         long musicId = new CloudMusicPackage.MusicInfo(musicInfo).getMatchedMusicId();
                         boolean isStarred = CloudMusicPackage.MusicInfo.isStarred(musicId);
                         if (isStarred) {
-                            callStaticMethod(CloudMusicPackage.UIAA.getClazz(), "a", currentActivity, "确定不再收藏此歌曲吗？", "不再收藏", (View.OnClickListener) v -> {
-                                try {
-                                    invokeOriginalMethod(param.method, param.thisObject, param.args);
-                                } catch (Throwable t) {
-                                    log(t);
-                                }
-                            });
+                            CloudMusicPackage.UIAA.getMaterialDialogWithPositiveBtnMethod().invoke(
+                                    null, currentActivity, "确定不再收藏此歌曲吗？", "不再收藏", (View.OnClickListener) v -> {
+                                        try {
+                                            invokeOriginalMethod(param.method, param.thisObject, param.args);
+                                        } catch (Throwable t) {
+                                            log(t);
+                                        }
+                                    });
                             param.setResult(null);
                         }
                     }

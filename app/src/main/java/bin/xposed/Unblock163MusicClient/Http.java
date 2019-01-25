@@ -1,5 +1,6 @@
 package bin.xposed.Unblock163MusicClient;
 
+import android.content.pm.PackageManager;
 import android.text.TextUtils;
 
 import org.json.JSONException;
@@ -24,7 +25,7 @@ class Http {
     private String finalLocation;
 
 
-    private Http(String method, String urlString, String postData, Boolean sendDefaultHead, Map<String, String> additionalHeaders) throws IOException, JSONException, InvocationTargetException, IllegalAccessException {
+    private Http(String method, String urlString, String postData, boolean sendDefaultHead, Map<String, String> additionalHeaders) throws IOException, JSONException, InvocationTargetException, IllegalAccessException, PackageManager.NameNotFoundException {
         int retryCount = 3;
         while (true) {
             try {
@@ -40,20 +41,20 @@ class Http {
         }
     }
 
-    public static Http get(String urlString, Boolean sendDefaultHead) throws IOException, JSONException, InvocationTargetException, IllegalAccessException {
+    public static Http get(String urlString, boolean sendDefaultHead) throws IOException, JSONException, InvocationTargetException, IllegalAccessException, PackageManager.NameNotFoundException {
         return new Http("GET", urlString, null, sendDefaultHead, null);
     }
 
-    static Http post(String urlString, Map postData, Boolean sendDefaultHead) throws IOException, JSONException, InvocationTargetException, IllegalAccessException {
-        return new Http("POST", urlString, Utility.serialData(postData), sendDefaultHead, null);
+    static Http post(String urlString, Map postData, boolean sendDefaultHead) throws IOException, JSONException, InvocationTargetException, IllegalAccessException, PackageManager.NameNotFoundException {
+        return new Http("POST", urlString, Utils.serialData(postData), sendDefaultHead, null);
     }
 
 
-    public static Http head(String urlString, Boolean sendDefaultHead) throws IOException, JSONException, InvocationTargetException, IllegalAccessException {
+    public static Http head(String urlString, boolean sendDefaultHead) throws IOException, JSONException, InvocationTargetException, IllegalAccessException, PackageManager.NameNotFoundException {
         return new Http("HEAD", urlString, null, sendDefaultHead, null);
     }
 
-    static Http headByGet(String urlString, Boolean sendDefaultHead) throws IOException, JSONException, InvocationTargetException, IllegalAccessException {
+    static Http headByGet(String urlString, boolean sendDefaultHead) throws IOException, JSONException, InvocationTargetException, IllegalAccessException, PackageManager.NameNotFoundException {
         Map<String, String> map = new LinkedHashMap<String, String>() {{
             // 虾米0-0有时会416
             put("Range", "bytes=0-1");
@@ -61,7 +62,7 @@ class Http {
         return new Http("GET", urlString, null, sendDefaultHead, map);
     }
 
-    private void doRequest(String method, String urlString, String postData, Boolean sendDefaultHead, Map<String, String> additionHeaders) throws IOException, JSONException, InvocationTargetException, IllegalAccessException {
+    private void doRequest(String method, String urlString, String postData, boolean sendDefaultHead, Map<String, String> additionHeaders) throws IOException, JSONException, InvocationTargetException, IllegalAccessException, PackageManager.NameNotFoundException {
         if (TextUtils.isEmpty(urlString)) {
             return;
         }
@@ -101,9 +102,11 @@ class Http {
 
             // cookie
             if (sendDefaultHead) {
-                conn.setRequestProperty("Cookie", CloudMusicPackage.HttpEapi.getDefaultCookie());
-                conn.setRequestProperty("Modver", BuildConfig.VERSION_NAME);
+                conn.setRequestProperty("Cookie", CloudMusicPackage.HttpEapi.CookieUtil.getDefaultCookie());
             }
+
+            conn.setRequestProperty("Appver", CloudMusicPackage.getVersion());
+            conn.setRequestProperty("Modver", BuildConfig.VERSION_NAME);
 
 
             // send post data
@@ -127,7 +130,7 @@ class Http {
 
             // whole file size
             if (conn.getHeaderFields().containsKey("Content-Range")) {
-                contentLength = Long.parseLong(Utility.getLastPartOfString(conn.getHeaderField("Content-Range"), "/"));
+                contentLength = Long.parseLong(Utils.getLastPartOfString(conn.getHeaderField("Content-Range"), "/"));
             } else {
                 contentLength = conn.getContentLength();
             }

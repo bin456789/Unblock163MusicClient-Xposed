@@ -1,21 +1,52 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
-    <CheckBoxPreference
-        android:defaultValue="false"
-        android:key="UNBLOCK"
-        android:title="@string/unblock_title" />
-    <CheckBoxPreference
-        android:defaultValue="false"
-        android:dependency="UNBLOCK"
-        android:key="OVERSEA_MODE"
-        android:summary="@string/oversea_mode_description"
-        android:title="@string/oversea_mode_title" />
-    <CheckBoxPreference
-        android:defaultValue="false"
-        android:dependency="UNBLOCK"
-        android:key="PREVENT_GRAY"
-        android:title="@string/prevent_gray_title" />
-    <CheckBoxPreference
-        android:defaultValue="false"
-        android:key="DISLIKE_CONFIRM"
-        android:title="@string/dislike_confirm_title" />
+    <PreferenceCategory android:title="@string/setting">
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="UNBLOCK"
+            android:title="@string/unblock_title" />
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:dependency="UNBLOCK"
+            android:key="OVERSEA_MODE"
+            android:summary="@string/oversea_mode_description"
+            android:title="@string/oversea_mode_title" />
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:dependency="UNBLOCK"
+            android:key="PREVENT_GRAY"
+            android:title="@string/prevent_gray_title" />
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="DISLIKE_CONFIRM"
+            android:title="@string/dislike_confirm_title" />
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="TRY_HIGH_BITRATE"
+            android:summary="@string/try_high_bitrate_description"
+            android:title="@string/try_high_bitrate_title" />
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="TRANSPARENT_NAVIGATION_BAR"
+            android:title="@string/transparent_navigation_bar_title" />
+        <CheckBoxPreference
+            android:key="HIDE_MODULE_ICON"
+            android:persistent="false"
+            android:title="@string/hide_module_icon" />
+    </PreferenceCategory>
+    <PreferenceCategory android:title="@string/about">
+        <Preference
+            android:key="MODVER"
+            android:persistent="false"
+            android:title="@string/app_name" />
+        <Preference
+            android:key="APPVER"
+            android:persistent="false"
+            android:title="@string/best_appver" />
+        <Preference
+            android:key="AUTHOR"
+            android:persistent="false"
+            android:summary="bin456789"
+            android:title="@string/author" />
+    </PreferenceCategory>
+
 </PreferenceScreen>

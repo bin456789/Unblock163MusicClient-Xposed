@@ -38,8 +38,13 @@ public class Settings {
         return getModuleSharedPreferences().getBoolean("PREVENT_GRAY", false);
     }
 
-    static String getDnsServer() {
-        return "219.141.140.10";
+    public static boolean isTryHighBitrate() {
+        return getModuleSharedPreferences().getBoolean("TRY_HIGH_BITRATE", false);
+    }
+
+
+    public static boolean isTransparentNavBar() {
+        return getModuleSharedPreferences().getBoolean("TRANSPARENT_NAVIGATION_BAR", false);
     }
 
 
@@ -47,9 +52,9 @@ public class Settings {
         if (chinaIP == null) {
             chinaIP = String.format("%s.%s.%s.%s",
                     111,
-                    Utility.randInt(1, 63),
-                    Utility.randInt(1, 255),
-                    Utility.randInt(1, 254));
+                    Utils.randInt(1, 63),
+                    Utils.randInt(1, 255),
+                    Utils.randInt(1, 254));
         }
         return chinaIP;
     }

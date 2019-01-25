@@ -3,16 +3,12 @@ package bin.xposed.Unblock163MusicClient;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.net.Uri;
 import android.text.TextUtils;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
-import org.xbill.DNS.Lookup;
-import org.xbill.DNS.Record;
-import org.xbill.DNS.SimpleResolver;
-import org.xbill.DNS.TextParseException;
-import org.xbill.DNS.Type;
 
 import java.io.BufferedReader;
 import java.io.File;
@@ -25,10 +21,7 @@ import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.net.URLEncoder;
-import java.net.UnknownHostException;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -45,9 +38,8 @@ import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
 import static de.robv.android.xposed.XposedHelpers.findClass;
 
 @SuppressWarnings({"unused", "WeakerAccess"})
-public class Utility {
+public class Utils {
     private static Map<String, InetAddress[]> dnsCache = new HashMap<>();
-    private static SimpleResolver cnDnsResolver;
     private static WeakReference<Resources> moduleResources = new WeakReference<>(null);
 
     static String getFirstPartOfString(String str, String separator) {
@@ -131,24 +123,7 @@ public class Utility {
     }
 
 
-    static String getIpByHost(String domain) throws UnknownHostException, TextParseException {
-        if (cnDnsResolver == null) {
-            cnDnsResolver = new SimpleResolver(Settings.getDnsServer());
-        }
-
-        // caches mechanism built-in, just look it up
-        Lookup lookup = new Lookup(domain, Type.A);
-        lookup.setResolver(cnDnsResolver);
-        Record[] records = lookup.run();
-        if (lookup.getResult() == Lookup.SUCCESSFUL) {
-            // already random, just pick index 0
-            return records[0].rdataToString();
-        } else {
-            throw new RuntimeException("No IP found");
-        }
-    }
-
-    public static InetAddress[] getIpByHostViaHttpDns(String domain) throws IOException, InvocationTargetException, IllegalAccessException, JSONException {
+    public static InetAddress[] getIpByHostViaHttpDns(String domain) throws IOException, InvocationTargetException, IllegalAccessException, JSONException, PackageManager.NameNotFoundException {
         if (dnsCache.containsKey(domain)) {
             return dnsCache.get(domain);
         } else {
@@ -175,17 +150,30 @@ public class Utility {
         }
     }
 
-    static Map<String, String> combineRequestData(String path, Map<String, String> dataMap) throws URISyntaxException {
-        Map<String, String> map = dataMap != null ? dataMap : new HashMap<>();
+    static Map<String, String> stringToMap(String data) {
+        Map<String, String> map = new HashMap<>();
+        map.put("A", null);
 
-        String query = new URI(path).getQuery();
-        if (!TextUtils.isEmpty(query)) {
-            for (String s : query.split("&")) {
-                String[] data = s.split("=");
-                map.put(data[0], data[1]);
+        if (!TextUtils.isEmpty(data)) {
+            for (String s : data.split("&")) {
+                String[] ss = s.split("=");
+                map.put(ss[0], ss.length > 1 ? ss[1] : null);
             }
         }
         return map;
+    }
+
+    static Map<String, String> combineRequestData(String path, Map<String, String> map) {
+        HashMap<String, String> hashMap = new HashMap<>(map);
+
+        String query = Uri.parse(path).getQuery();
+        if (!TextUtils.isEmpty(query)) {
+            for (String s : query.split("&")) {
+                String[] data = s.split("=");
+                hashMap.put(data[0], data.length > 1 ? data[1] : null);
+            }
+        }
+        return hashMap;
     }
 
     static Context getSystemContext() {
@@ -202,7 +190,7 @@ public class Utility {
 
         return resources;
 
-        // 或者用 CloudMusicPackage.NeteaseMusicApplication.getApplication()
+        // æˆ–è€…ç”¨ CloudMusicPackage.NeteaseMusicApplication.getApplication()
     }
 
 

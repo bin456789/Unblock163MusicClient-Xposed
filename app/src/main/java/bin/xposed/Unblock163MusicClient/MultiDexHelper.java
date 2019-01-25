@@ -9,7 +9,6 @@ import android.os.Build;
 import java.io.File;
 import java.io.FileInputStream;
 import java.io.FileOutputStream;
-import java.io.IOException;
 import java.io.ObjectInputStream;
 import java.io.ObjectOutputStream;
 import java.util.ArrayList;
@@ -98,10 +97,8 @@ class MultiDexHelper {
                     //noinspection unchecked
                     return (List<String>) in.readObject();
                 }
-            } catch (IOException e) {
-                log(e);
-            } catch (ClassNotFoundException e) {
-                log(e);
+            } catch (Throwable t) {
+                log(t);
             }
         }
 
@@ -124,7 +121,7 @@ class MultiDexHelper {
                     classNames.add(dexEntries.nextElement());
                 }
                 if (pathTmp != null) {
-                    Utility.deleteFile(new File(pathTmp));
+                    Utils.deleteFile(new File(pathTmp));
                 }
             } catch (Throwable t) {
                 hasException = true;
@@ -136,6 +133,7 @@ class MultiDexHelper {
         // write class list cache
         if (!hasException) {
             try {
+                classesFile.delete();
                 ObjectOutputStream out = new ObjectOutputStream(new FileOutputStream(classesFile));
                 out.writeLong(lastUpdateTime);
                 out.writeObject(classNames);

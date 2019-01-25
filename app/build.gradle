@@ -1,9 +1,7 @@
 apply plugin: 'com.android.application'
 
 android {
-    compileSdkVersion 27
-    buildToolsVersion '27.0.3'
-    useLibrary 'org.apache.http.legacy'
+    compileSdkVersion 28
     signingConfigs {
         release {
             if (System.getenv()["CI"]) {
@@ -23,9 +21,9 @@ android {
     }
     defaultConfig {
         applicationId "bin.xposed.Unblock163MusicClient"
-        minSdkVersion 9
-        targetSdkVersion 27
-        versionCode 27
+        minSdkVersion 16
+        targetSdkVersion 28
+        versionCode 28
         versionName = "0.0.${versionCode}"
         archivesBaseName = "${applicationId}-${versionName}"
     }
@@ -50,15 +48,16 @@ android {
 dependencies {
     compileOnly 'de.robv.android.xposed:api:53'
     compileOnly 'de.robv.android.xposed:api:53:sources'
-    implementation 'dnsjava:dnsjava:2.1.8'
-    implementation 'com.annimon:stream:1.2.0'
+    implementation 'com.annimon:stream:1.2.1'
+    implementation project(':hotxposed')
 }
 
 afterEvaluate {
     installDebug.doLast {
-        updateVirtualXposedAPP.execute()
-        rebootVirtualXposedAPP.execute()
-        launchVirtualXposedAPP.execute()
+//        updateVirtualXposedAPP.execute()
+//        rebootVirtualXposedAPP.execute()
+//        launchVirtualXposedAPP.execute()
+        restartCloudMusic.execute()
     }
 }
 
@@ -74,4 +73,12 @@ task rebootVirtualXposedAPP(type: Exec) {
 task launchVirtualXposedAPP(type: Exec) {
     def pkg = "com.netease.cloudmusic"
     commandLine android.adbExecutable, 'shell', 'am', 'broadcast', '-a', 'io.va.exposed.CMD', '-e', 'cmd', 'launch', '-e', 'pkg', pkg
+    commandLine android.adbExecutable, 'shell', 'am', 'force-stop', pkg
 }
+
+task restartCloudMusic(type: Exec) {
+    def pkg = "com.netease.cloudmusic"
+    commandLine 'adb', 'shell', 'am', 'force-stop', pkg
+    commandLine 'adb', 'shell', 'monkey', '-p', pkg, "1"
+}
+

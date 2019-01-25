@@ -37,12 +37,10 @@ public class TipsFor3rd extends Hooker {
             log(t);
         }
 
-        if (CloudMusicPackage.getVersion().compareTo("3.4") >= 0) {
-            try {
-                findAndHookMethod(CloudMusicPackage.MusicInfo.getClazz(), "getThirdTitle", boolean.class, set3rdStr);
-            } catch (Throwable t) {
-                log(t);
-            }
+        try {
+            findAndHookMethod(CloudMusicPackage.MusicInfo.getClazz(), "getThirdTitle", boolean.class, set3rdStr);
+        } catch (Throwable t) {
+            log(t);
         }
     }
 }

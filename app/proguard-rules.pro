@@ -16,9 +16,13 @@
 #   public *;
 #}
 
--dontwarn org.xbill.DNS.spi.DNSJavaNameServiceDescriptor
--keep public class bin.xposed.Unblock163MusicClient.Main
+-keep class bin.xposed.Unblock163MusicClient.Main
+
+-keepclassmembers class bin.xposed.Unblock163MusicClient.HookerDispatcher* {
+  void dispatch(***);
+}
+
 -keepclassmembernames class bin.xposed.Unblock163MusicClient.ui.SettingsActivity {
-    int getActivatedModuleVersion();
+    boolean isModuleActive();
 }
 
