@@ -23,7 +23,7 @@ public class Settings {
 
 
     public static boolean isUnblockEnabled() {
-        return getModuleSharedPreferences().getBoolean("UNBLOCK", false);
+        return getModuleSharedPreferences().getBoolean("UNBLOCK", true);
     }
 
     public static boolean isOverseaModeEnabled() {

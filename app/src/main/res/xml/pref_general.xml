@@ -1,7 +1,7 @@
 <PreferenceScreen xmlns:android="http://schemas.android.com/apk/res/android">
     <PreferenceCategory android:title="@string/setting">
         <CheckBoxPreference
-            android:defaultValue="false"
+            android:defaultValue="true"
             android:key="UNBLOCK"
             android:title="@string/unblock_title" />
         <CheckBoxPreference
@@ -17,13 +17,14 @@
             android:title="@string/prevent_gray_title" />
         <CheckBoxPreference
             android:defaultValue="false"
-            android:key="DISLIKE_CONFIRM"
-            android:title="@string/dislike_confirm_title" />
-        <CheckBoxPreference
-            android:defaultValue="false"
+            android:dependency="UNBLOCK"
             android:key="TRY_HIGH_BITRATE"
             android:summary="@string/try_high_bitrate_description"
             android:title="@string/try_high_bitrate_title" />
+        <CheckBoxPreference
+            android:defaultValue="false"
+            android:key="DISLIKE_CONFIRM"
+            android:title="@string/dislike_confirm_title" />
         <CheckBoxPreference
             android:defaultValue="false"
             android:key="TRANSPARENT_NAVIGATION_BAR"
