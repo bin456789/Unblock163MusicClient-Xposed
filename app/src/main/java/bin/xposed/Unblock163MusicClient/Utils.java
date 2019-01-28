@@ -6,6 +6,9 @@ import android.content.res.Resources;
 import android.net.Uri;
 import android.text.TextUtils;
 
+import com.annimon.stream.Collectors;
+import com.annimon.stream.Stream;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -25,7 +28,6 @@ import java.net.URLEncoder;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
-import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
@@ -54,47 +56,32 @@ public class Utils {
         return getFirstPartOfString(getLastPartOfString(url, "/"), ".");
     }
 
-    static String serialData(JSONObject json) throws UnsupportedEncodingException, JSONException {
-        StringBuilder result = new StringBuilder();
-        boolean first = true;
-        Iterator<String> keys = json.keys();
-        while (keys.hasNext()) {
-            if (first) {
-                first = false;
-            } else {
-                result.append("&");
-            }
-
-            String key = keys.next();
-            Object val = json.get(key);
-            result.append(URLEncoder.encode(key, "UTF-8"));
-            result.append("=");
-            result.append(URLEncoder.encode(val.toString(), "UTF-8"));
+    public static String encode(String s) {
+        try {
+            return s == null ? "" : java.net.URLEncoder.encode(s, "UTF-8");
+        } catch (UnsupportedEncodingException e) {
+            throw new IllegalStateException(e);
         }
-        return result.toString();
     }
 
-    static String serialData(Map<String, String> dataMap) throws UnsupportedEncodingException {
-        if (dataMap == null) {
-            return "";
+    static String serialData(Map<String, String> map) {
+        return Stream.of(map.entrySet())
+                .map(e -> encode(e.getKey()) + "=" + encode(e.getValue()))
+                .collect(Collectors.joining("&"));
+    }
+
+    static String serialData(JSONObject json) {
+        return Stream.of(json.keys())
+                .map(k -> encode(k) + "=" + encode(getValByJsonKey(json, k).toString()))
+                .collect(Collectors.joining("&"));
+    }
+
+    static Object getValByJsonKey(JSONObject json, String key) {
+        try {
+            return json.get(key);
+        } catch (JSONException e) {
+            throw new IllegalStateException(e);
         }
-
-        StringBuilder result = new StringBuilder();
-        boolean first = true;
-
-        for (Map.Entry<String, String> entry : dataMap.entrySet()) {
-            if (first) {
-                first = false;
-            } else {
-                result.append("&");
-            }
-
-            result.append(URLEncoder.encode(entry.getKey(), "UTF-8"));
-            result.append("=");
-            result.append(URLEncoder.encode(entry.getValue(), "UTF-8"));
-        }
-
-        return result.toString();
     }
 
     @SuppressWarnings("deprecation")
