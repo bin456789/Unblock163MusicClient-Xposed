@@ -61,7 +61,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         findPreference("MODVER").setSummary(BuildConfig.VERSION_NAME);
         findPreference("APPVER").setSummary("5.8.x");
         findPreference("AUTHOR").setOnPreferenceClickListener(preference -> {
-            openCoolapk();
+            // openCoolapk();
             return false;
         });
     }
