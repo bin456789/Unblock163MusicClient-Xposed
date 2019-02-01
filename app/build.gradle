@@ -50,6 +50,7 @@ dependencies {
     compileOnly 'de.robv.android.xposed:api:53'
     compileOnly 'de.robv.android.xposed:api:53:sources'
     implementation 'com.annimon:stream:1.2.1'
+    implementation 'com.gyf.immersionbar:immersionbar:2.3.2'
     implementation project(':hotxposed')
 }
 
