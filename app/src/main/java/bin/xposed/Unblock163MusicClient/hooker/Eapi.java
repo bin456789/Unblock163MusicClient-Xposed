@@ -63,6 +63,7 @@ public class Eapi extends Hooker {
                                 || segments.contains("playlist")
                                 || segments.contains("radio")
                                 || segments.contains("song")
+                                || segments.contains("songs")
                                 || segments.contains("search")) {
                             modified = Handler.modifyByRegex(original);
                         }
