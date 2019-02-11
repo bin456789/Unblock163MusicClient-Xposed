@@ -24,7 +24,7 @@ android {
         minSdkVersion 16
         // target Android P 之后，在安装过程中会对 APP 文件目录实行严格的 SELinux 限制，即使 makeWorkdReadable，其他 APP 也无法读取插件的任何配置文件
         targetSdkVersion 27
-        versionCode 29
+        versionCode 30
         versionName = "0.0.${versionCode}"
         archivesBaseName = "${applicationId}-${versionName}"
     }
@@ -51,6 +51,7 @@ dependencies {
     compileOnly 'de.robv.android.xposed:api:53:sources'
     implementation 'com.annimon:stream:1.2.1'
     implementation 'com.gyf.immersionbar:immersionbar:2.3.2'
+    implementation 'net.dongliu:apk-parser:2.6.5'
     implementation project(':hotxposed')
 }
 
@@ -80,7 +81,7 @@ task launchVirtualXposedAPP(type: Exec) {
 
 task restartCloudMusic(type: Exec) {
     def pkg = "com.netease.cloudmusic"
-    commandLine 'adb', 'shell', 'am', 'force-stop', pkg
-    commandLine 'adb', 'shell', 'monkey', '-p', pkg, "1"
+    commandLine android.adbExecutable, 'shell', 'am', 'force-stop', pkg
+    commandLine android.adbExecutable, 'shell', 'monkey', '-p', pkg, "1"
 }
 

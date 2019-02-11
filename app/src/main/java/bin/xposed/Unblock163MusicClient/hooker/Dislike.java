@@ -1,7 +1,6 @@
 package bin.xposed.Unblock163MusicClient.hooker;
 
 import android.app.Activity;
-import android.content.pm.PackageManager;
 import android.view.View;
 
 import bin.xposed.Unblock163MusicClient.CloudMusicPackage;
@@ -17,7 +16,7 @@ import static de.robv.android.xposed.XposedHelpers.getObjectField;
 public class Dislike extends Hooker {
 
     @Override
-    protected void howToHook() throws PackageManager.NameNotFoundException, IllegalAccessException {
+    protected void howToHook() throws Throwable {
         if (Settings.isConfirmDislikeEnabled()) {
             hookMethod(CloudMusicPackage.PlayerActivity.getLikeButtonOnClickMethod(), new XC_MethodHook() {
                 @Override
