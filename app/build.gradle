@@ -21,7 +21,7 @@ android {
     }
     defaultConfig {
         applicationId "bin.xposed.Unblock163MusicClient"
-        minSdkVersion 16
+        minSdkVersion 14
         // target Android P 之后，在安装过程中会对 APP 文件目录实行严格的 SELinux 限制，即使 makeWorkdReadable，其他 APP 也无法读取插件的任何配置文件
         targetSdkVersion 27
         versionCode 30
@@ -51,7 +51,8 @@ dependencies {
     compileOnly 'de.robv.android.xposed:api:53:sources'
     implementation 'com.annimon:stream:1.2.1'
     implementation 'com.gyf.immersionbar:immersionbar:2.3.2'
-    implementation 'net.dongliu:apk-parser:2.6.5'
+    implementation 'org.smali:dexlib2:2.2.6'
+    implementation 'com.google.guava:guava:27.0.1-android'
     implementation project(':hotxposed')
 }
 

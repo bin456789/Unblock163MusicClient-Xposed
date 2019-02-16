@@ -11,6 +11,7 @@ import android.net.Uri;
 import android.os.Build;
 import android.os.Bundle;
 import android.preference.CheckBoxPreference;
+import android.preference.Preference;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
 import android.widget.Toast;
@@ -23,7 +24,6 @@ import bin.xposed.Unblock163MusicClient.Utils;
 
 public class SettingsActivity extends PreferenceActivity implements OnSharedPreferenceChangeListener {
 
-    CheckBoxPreference hideIconPref;
 
     private boolean isExpModuleActive() {
         boolean isExp = false;
@@ -45,7 +45,6 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         return false;
     }
 
-    @SuppressWarnings("deprecation")
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -54,15 +53,34 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 
         setInfo();
         setIcon();
-        checkState();
+        // checkState();
+    }
+
+    private Preference findPreference(int id) {
+        return findPreference(getString(id));
     }
 
     private void setInfo() {
-        findPreference("MODVER").setSummary(BuildConfig.VERSION_NAME);
-        findPreference("APPVER").setSummary("5.8.x");
-        findPreference("AUTHOR").setOnPreferenceClickListener(preference -> {
-            // openCoolapk();
-            return false;
+        findPreference(R.string.modver_key).setSummary(BuildConfig.VERSION_NAME);
+        findPreference(R.string.compatible_appver_key).setSummary("4.3 ~ 5.9");
+        findPreference(R.string.best_appver_key).setSummary("5.9");
+
+        setOnTenClickListener(findPreference(R.string.modver_key), this::openGithub);
+        setOnTenClickListener(findPreference(R.string.author_key), this::openCoolapk);
+    }
+
+    private void setOnTenClickListener(Preference preference, Runnable runnable) {
+        preference.setOnPreferenceClickListener(new Preference.OnPreferenceClickListener() {
+            int clickCount = 0;
+
+            @Override
+            public boolean onPreferenceClick(Preference preference) {
+                clickCount++;
+                if (clickCount >= 10) {
+                    runnable.run();
+                }
+                return false;
+            }
         });
     }
 
@@ -104,11 +122,16 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 
     private void openCoolapk() {
         String pkg = "com.coolapk.market";
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.coolapk.com/u/185162"));
         if (Utils.isAppInstalled(this, pkg)) {
-            Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("http://www.coolapk.com/u/185162"));
             intent.setPackage(pkg);
-            startActivity(intent);
         }
+        startActivity(intent);
+    }
+
+    private void openGithub() {
+        Intent intent = new Intent(Intent.ACTION_VIEW, Uri.parse("https://github.com/bin456789/Unblock163MusicClient-Xposed/releases"));
+        startActivity(intent);
     }
 
     private boolean isVXP() {
@@ -119,9 +142,9 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         ComponentName aliasName = new ComponentName(SettingsActivity.this, SettingsActivity.this.getClass().getName() + "Alias");
         PackageManager packageManager = getPackageManager();
 
-        hideIconPref = (CheckBoxPreference) findPreference("HIDE_MODULE_ICON");
-        hideIconPref.setChecked(packageManager.getComponentEnabledSetting(aliasName) == PackageManager.COMPONENT_ENABLED_STATE_DISABLED);
-        hideIconPref.setOnPreferenceChangeListener((preference, newValue) -> {
+        CheckBoxPreference hideIconPreference = (CheckBoxPreference) findPreference(R.string.hide_module_icon_key);
+        hideIconPreference.setChecked(packageManager.getComponentEnabledSetting(aliasName) == PackageManager.COMPONENT_ENABLED_STATE_DISABLED);
+        hideIconPreference.setOnPreferenceChangeListener((preference, newValue) -> {
             int state = (Boolean) newValue ? PackageManager.COMPONENT_ENABLED_STATE_DISABLED : PackageManager.COMPONENT_ENABLED_STATE_ENABLED;
             packageManager.setComponentEnabledSetting(aliasName, state, PackageManager.DONT_KILL_APP);
             return true;
@@ -164,7 +187,7 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 
     @Override
     public void onSharedPreferenceChanged(SharedPreferences sharedPreferences, String key) {
-        if (sharedPreferences != hideIconPref.getSharedPreferences()) {
+        if (!key.equals(getString(R.string.hide_module_icon_key))) {
             Toast.makeText(this, R.string.hint_reboot_setting_changed, Toast.LENGTH_SHORT).show();
         }
     }

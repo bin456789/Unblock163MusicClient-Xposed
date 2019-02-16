@@ -26,4 +26,4 @@
     boolean isModuleActive();
 }
 
--dontwarn  net.dongliu.apk.parser.**
+-dontwarn  com.google.**

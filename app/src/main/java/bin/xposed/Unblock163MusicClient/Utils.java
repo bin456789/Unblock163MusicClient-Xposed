@@ -1,46 +1,51 @@
 package bin.xposed.Unblock163MusicClient;
 
+import android.app.ActivityManager;
 import android.content.Context;
 import android.content.pm.PackageManager;
 import android.content.res.Resources;
+import android.graphics.drawable.Drawable;
 import android.net.Uri;
+import android.os.Build;
 import android.text.TextUtils;
+import android.util.Log;
+import android.util.TypedValue;
+import android.view.View;
+import android.widget.TextView;
 
 import com.annimon.stream.Collectors;
 import com.annimon.stream.Stream;
+import com.google.common.base.Charsets;
+import com.google.common.base.Joiner;
+import com.google.common.base.Splitter;
+import com.google.common.io.Files;
 
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
-import java.io.BufferedReader;
 import java.io.File;
-import java.io.FileReader;
-import java.io.FileWriter;
 import java.io.FilenameFilter;
 import java.io.IOException;
 import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
-import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
-import java.net.URLEncoder;
-import java.util.ArrayList;
-import java.util.Comparator;
 import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Random;
 import java.util.regex.Pattern;
 
 import static android.os.Looper.getMainLooper;
-import static de.robv.android.xposed.XposedBridge.log;
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
 import static de.robv.android.xposed.XposedHelpers.findClass;
 
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class Utils {
+    private static final String TAG = "unblock163";
     private static Map<String, InetAddress[]> dnsCache = new HashMap<>();
     private static WeakReference<Resources> moduleResources = new WeakReference<>(null);
 
@@ -85,30 +90,24 @@ public class Utils {
     }
 
     @SuppressWarnings("deprecation")
-    static String serialCookies(List cookieList, Map<String, String> cookieMethods, String filterDomain) throws UnsupportedEncodingException {
-        StringBuilder result = new StringBuilder();
-        boolean first = true;
-        for (Object cookie : cookieList) {
+    static String serialCookies(List cookieList, Map<String, String> cookieMethods, String filterDomain) {
+        String domainMethod = cookieMethods.get("domain");
+        String nameMethod = cookieMethods.get("name");
+        String valueMethod = cookieMethods.get("value");
 
-            String domain = (String) callMethod(cookie, cookieMethods.get("domain"));
-            if (filterDomain == null || filterDomain.equals(domain)) {
-                if (first) {
-                    first = false;
-                } else {
-                    result.append("; ");
-                }
-
-                String name = (String) callMethod(cookie, cookieMethods.get("name"));
-                String value = (String) callMethod(cookie, cookieMethods.get("value"));
-
-                result.append(URLEncoder.encode(name, "UTF-8"));
-                result.append("=");
-                result.append(URLEncoder.encode(value, "UTF-8"));
-            }
-        }
-        return result.toString();
+        return (String) Stream.of(cookieList)
+                .map(cookie -> {
+                    String domain = (String) callMethod(cookie, domainMethod);
+                    if (filterDomain == null || filterDomain.equals(domain)) {
+                        String name = (String) callMethod(cookie, nameMethod);
+                        String value = (String) callMethod(cookie, valueMethod);
+                        return String.format("%s=%s", encode(name), encode(value));
+                    }
+                    return null;
+                })
+                .withoutNulls()
+                .collect(Collectors.joining("; "));
     }
-
 
     public static InetAddress[] getIpByHostViaHttpDns(String domain) throws IOException, InvocationTargetException, IllegalAccessException, JSONException, PackageManager.NameNotFoundException {
         if (dnsCache.containsKey(domain)) {
@@ -138,27 +137,30 @@ public class Utils {
     }
 
     static Map<String, String> stringToMap(String data) {
-        Map<String, String> map = new HashMap<>();
-        map.put("A", null);
-
-        if (!TextUtils.isEmpty(data)) {
-            for (String s : data.split("&")) {
-                String[] ss = s.split("=");
-                map.put(ss[0], ss.length > 1 ? ss[1] : null);
+        if (false) {
+            if (TextUtils.isEmpty(data)) {
+                return new HashMap<>();
             }
+            return Splitter.on("&").omitEmptyStrings().withKeyValueSeparator("=").split(data);
+
+        } else {
+            Map<String, String> map = new HashMap<>();
+
+            if (!TextUtils.isEmpty(data)) {
+                for (String s : data.split("&")) {
+                    String[] ss = s.split("=");
+                    map.put(ss[0], ss.length > 1 ? ss[1] : "");
+                }
+            }
+            return map;
         }
-        return map;
     }
 
-    static Map<String, String> combineRequestData(String path, Map<String, String> map) {
-        HashMap<String, String> hashMap = new HashMap<>(map);
-
-        String query = Uri.parse(path).getQuery();
-        if (!TextUtils.isEmpty(query)) {
-            for (String s : query.split("&")) {
-                String[] data = s.split("=");
-                hashMap.put(data[0], data.length > 1 ? data[1] : null);
-            }
+    static Map<String, String> combineRequestData(Uri path, Map<String, String> mapFromData) {
+        Map<String, String> hashMap = new LinkedHashMap<>(mapFromData);
+        for (String name : path.getQueryParameterNames()) {
+            String val = path.getQueryParameter(name);
+            hashMap.put(name, val != null ? val : "");
         }
         return hashMap;
     }
@@ -168,7 +170,7 @@ public class Utils {
         return (Context) callMethod(activityThread, "getSystemContext");
     }
 
-    static Resources getModuleResources() throws PackageManager.NameNotFoundException {
+    public static Resources getModuleResources() throws PackageManager.NameNotFoundException {
         Resources resources = moduleResources.get();
         if (resources == null) {
             resources = getSystemContext().createPackageContext(BuildConfig.APPLICATION_ID, Context.CONTEXT_IGNORE_SECURITY).getResources();
@@ -177,49 +179,21 @@ public class Utils {
 
         return resources;
 
-        // æˆ–è€…ç”¨ CloudMusicPackage.NeteaseMusicApplication.getApplication()
     }
-
 
     static String readFile(File file) throws IOException {
         if (file.exists() && file.isFile() && file.canRead()) {
-            StringBuilder sb = new StringBuilder();
-            BufferedReader input = null;
-            try {
-                input = new BufferedReader(new FileReader(file));
-                String line;
-                boolean isFirstLine = true;
-                while ((line = input.readLine()) != null) {
-                    sb.append(line);
-                    if (isFirstLine) {
-                        isFirstLine = false;
-                    } else {
-                        sb.append(System.getProperty("line.separator"));
-                    }
-                }
-            } finally {
-                try {
-                    if (input != null) {
-                        input.close();
-                    }
-                } catch (IOException e) {
-                    log(e);
-                }
-            }
-            return sb.toString();
+            List<String> lines = Files.readLines(file, Charsets.UTF_8);
+            return Joiner.on("\n").join(lines);
         } else {
-            throw new RuntimeException("file not exists or file can't read");
+            return null;
         }
     }
 
     @SuppressWarnings("ResultOfMethodCallIgnored")
     static void writeFile(File file, String string) throws IOException {
         file.getParentFile().mkdirs();
-
-        FileWriter fileWriter = new FileWriter(file);
-        fileWriter.write(string);
-        fileWriter.flush();
-        fileWriter.close();
+        Files.asCharSink(file, Charsets.UTF_8).write(string);
     }
 
     static File findFirstFile(File dir, final String start, final String end) {
@@ -263,35 +237,6 @@ public class Utils {
         }
     }
 
-    static boolean containsField(Class source, String exact, String start, String end) {
-        return findFirstField(source, exact, start, end) != null;
-    }
-
-    static Field findFirstField(Class source, String exact, String start, String end) {
-        Field[] fs = findFields(source, exact, start, end, 1);
-        return fs.length > 0 ? fs[0] : null;
-    }
-
-    static Field[] findFields(Class source, String exact, String start, String end, int limit) {
-        Field[] fs = source.getDeclaredFields();
-        List<Field> returnFs = new ArrayList<>();
-
-        for (Field f : fs) {
-            if (returnFs.size() == limit) {
-                break;
-            }
-
-            String s = f.getType().getName();
-            if ((TextUtils.isEmpty(exact) || s.equals(exact))
-                    && (TextUtils.isEmpty(start) || s.startsWith(start))
-                    && (TextUtils.isEmpty(end) || s.endsWith(end))) {
-                returnFs.add(f);
-            }
-
-        }
-        return returnFs.toArray(new Field[returnFs.size()]);
-    }
-
     static boolean isJSONValid(String test) {
         try {
             new JSONObject(test);
@@ -306,24 +251,16 @@ public class Utils {
     }
 
     static List<String> filterList(List<String> list, Pattern pattern) {
-        List<String> filteredList = new ArrayList<>();
-        for (String curStr : list) {
-            if (pattern.matcher(curStr).find()) {
-                filteredList.add(curStr);
-            }
-        }
-        return filteredList;
+        return Stream.of(list)
+                .filter(s -> pattern.matcher(s).find())
+                .toList();
     }
 
     static List<String> filterList(List<String> list, String start, String end) {
-        List<String> filteredList = new ArrayList<>();
-        for (String s : list) {
-            if ((TextUtils.isEmpty(start) || s.startsWith(start))
-                    && (TextUtils.isEmpty(end) || s.endsWith(end))) {
-                filteredList.add(s);
-            }
-        }
-        return filteredList;
+        return Stream.of(list)
+                .filter(s -> TextUtils.isEmpty(start) || s.startsWith(start))
+                .filter(s -> TextUtils.isEmpty(end) || s.endsWith(end))
+                .toList();
     }
 
     public static boolean isAppInstalled(Context context, String packageName) {
@@ -365,76 +302,54 @@ public class Utils {
         return rand.nextInt((max - min) + 1) + min;
     }
 
-    static class AlphanumComparator implements Comparator<String> {
-        // http://www.davekoelle.com/files/AlphanumComparator.java
-
-        private boolean isDigit(char ch) {
-            return ch >= 48 && ch <= 57;
-        }
-
-        private String getChunk(String s, int slength, int marker) {
-            StringBuilder chunk = new StringBuilder();
-            char c = s.charAt(marker);
-            chunk.append(c);
-            marker++;
-            if (isDigit(c)) {
-                while (marker < slength) {
-                    c = s.charAt(marker);
-                    if (!isDigit(c)) {
-                        break;
-                    }
-                    chunk.append(c);
-                    marker++;
-                }
-            } else {
-                while (marker < slength) {
-                    c = s.charAt(marker);
-                    if (isDigit(c)) {
-                        break;
-                    }
-                    chunk.append(c);
-                    marker++;
+    public static String getCurrentProcessName(Context context) {
+        int pid = android.os.Process.myPid();
+        ActivityManager mActivityManager = (ActivityManager) context.getSystemService(Context.ACTIVITY_SERVICE);
+        if (mActivityManager != null) {
+            for (ActivityManager.RunningAppProcessInfo appProcess : mActivityManager.getRunningAppProcesses()) {
+                if (appProcess.pid == pid) {
+                    return appProcess.processName;
                 }
             }
-            return chunk.toString();
         }
+        throw new RuntimeException("can't get current process name");
+    }
 
-        @Override
-        public int compare(String s1, String s2) {
-            int thisMarker = 0;
-            int thatMarker = 0;
-            int s1Length = s1.length();
-            int s2Length = s2.length();
+    public static void log(String content) {
+        if (content.length() > 4000) {
+            Log.d(TAG, content.substring(0, 4000));
+            log(content.substring(4000));
+        } else {
+            Log.d(TAG, content);
+        }
+    }
 
-            while (thisMarker < s1Length && thatMarker < s2Length) {
-                String thisChunk = getChunk(s1, s1Length, thisMarker);
-                thisMarker += thisChunk.length();
 
-                String thatChunk = getChunk(s2, s2Length, thatMarker);
-                thatMarker += thatChunk.length();
+    public static void copyTextViewStyle(TextView source, TextView dist) {
+        dist.setPadding(source.getPaddingLeft(), source.getPaddingTop(), source.getPaddingRight(), source.getPaddingBottom());
+        dist.setLayoutParams(source.getLayoutParams());
+        dist.setGravity(source.getGravity());
+        dist.setTextColor(source.getTextColors());
+        dist.setTextSize(TypedValue.COMPLEX_UNIT_PX, source.getTextSize());
+        dist.setTypeface(source.getTypeface());
+        copyBackground(source, dist);
+    }
 
-                int result;
-                if (isDigit(thisChunk.charAt(0)) == isDigit(thatChunk.charAt(0))) {
-                    int thisChunkLength = thisChunk.length();
-                    result = thisChunkLength - thatChunk.length();
-                    if (result == 0) {
-                        for (int i = 0; i < thisChunkLength; i++) {
-                            result = thisChunk.charAt(i) - thatChunk.charAt(i);
-                            if (result != 0) {
-                                return result;
-                            }
-                        }
-                    }
-                } else {
-                    result = thisChunk.compareTo(thatChunk);
-                }
+    public static void copyBackground(View source, View dist) {
+        Drawable sourceBackground = source.getBackground();
+        Drawable.ConstantState constantState = sourceBackground.getConstantState();
+        if (constantState != null) {
+            setBackground(dist, constantState.newDrawable());
+        } else {
+            setBackground(dist, sourceBackground);
+        }
+    }
 
-                if (result != 0) {
-                    return result;
-                }
-            }
-
-            return s1Length - s2Length;
+    public static void setBackground(View view, Drawable background) {
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.JELLY_BEAN) {
+            view.setBackground(background);
+        } else {
+            view.setBackgroundDrawable(background);
         }
     }
 }

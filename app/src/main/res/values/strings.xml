@@ -8,33 +8,68 @@
     <string name="confirm">确定</string>
     <string name="source">来自</string>
 
-    <string name="setting">设置</string>
-    <string name="about">关于</string>
-    <string name="best_appver">最佳适配版本</string>
-    <string name="author">作者</string>
-
 
     <string name="hint_hide_icon">由于很少需要更改配置，本模块图标将从桌面上移除。\n\n下次可到 Xposed Installer 打开。</string>
     <string name="hint_reboot_setting_changed">重启或结束音乐软件进程后生效</string>
     <string name="hint_active">模块已激活，通过 %s</string>
     <string name="hint_not_active">模块未激活</string>
 
+    <string name="active_now">立即激活</string>
+    <string name="xposed_installer_not_installed">Xposed Installer 未安装</string>
+
+
+    <string name="setting">设置</string>
+
+    <string name="unblock_key">unblock</string>
+    <string name="unblock_default_value">true</string>
     <string name="unblock_title">开关</string>
 
+    <string name="oversea_mode_key" translatable="false">oversea_mode</string>
+    <string name="oversea_mode_default_value">false</string>
     <string name="oversea_mode_title">海外模式</string>
-    <string name="oversea_mode_description">国内用户勾选后会降低缓冲速度</string>
+    <string name="oversea_mode_summary">国内用户勾选后会降低缓冲速度</string>
 
+    <string name="dislike_confirm_key" translatable="false">dislike_confirm</string>
+    <string name="dislike_confirm_default_value">false</string>
     <string name="dislike_confirm_title">在取消红心前请求确认</string>
     <string name="dislike_confirm_question">确定取消红心？</string>
 
-    <string name="try_high_bitrate_title">尝试获得高音质，即使歌曲本身可播放</string>
-    <string name="try_high_bitrate_description">不建议开启，会降低缓冲速度</string>
+    <string name="upgrade_bitrate_from_3rd_party_key" translatable="false">upgrade_bitrate_from_3rd_party</string>
+    <string name="upgrade_bitrate_from_3rd_party_default_value">false</string>
+    <string name="upgrade_bitrate_from_3rd_party_title">尝试获得高音质，即使歌曲本身可播放</string>
+    <string name="upgrade_bitrate_from_3rd_party_summary">不建议开启，会降低缓冲速度</string>
 
+    <string name="prevent_gray_key" translatable="false">prevent_gray</string>
+    <string name="prevent_gray_default_value">false</string>
     <string name="prevent_gray_title">不变灰</string>
-    <string name="transparent_navigation_bar_title">透明导航栏</string>
-    <string name="hide_module_icon">隐藏本模块图标</string>
 
-    <string name="active_now">立即激活</string>
-    <string name="xposed_installer_not_installed">Xposed Installer 未安装</string>
+    <string name="hide_module_icon_key" translatable="false">hide_module_icon</string>
+    <string name="hide_module_icon_title">隐藏本模块图标</string>
+
+
+    <string name="beautify">美化</string>
+
+    <string name="transparent_player_navigation_bar_key" translatable="false">transparent_player_navigation_bar</string>
+    <string name="transparent_player_navigation_default_value">false</string>
+    <string name="transparent_player_navigation_bar_title">播放界面透明导航栏</string>
+
+    <string name="transparent_base_navigation_bar_key" translatable="false">transparent_base_navigation_bar</string>
+    <string name="transparent_base_navigation_bar_default_value">false</string>
+    <string name="transparent_base_navigation_bar_title">常规界面透明导航栏</string>
+
+
+    <string name="about">关于</string>
+
+    <string name="modver_key" translatable="false">modver</string>
+
+    <string name="compatible_appver_key" translatable="false">compatible_appver</string>
+    <string name="compatible_appver_title">兼容版本</string>
+
+    <string name="best_appver_key" translatable="false">best_appver</string>
+    <string name="best_appver_title">最佳兼容版本</string>
+
+    <string name="author_key" translatable="false">author</string>
+    <string name="author_title">作者</string>
+    <string name="author_summary">bin456789</string>
 
 </resources>

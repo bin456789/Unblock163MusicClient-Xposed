@@ -9,17 +9,17 @@ import android.net.Uri;
 import android.view.View;
 
 import com.annimon.stream.Stream;
+import com.google.common.collect.Ordering;
 
-import net.dongliu.apk.parser.ApkFile;
-import net.dongliu.apk.parser.bean.DexClass;
-
+import org.jf.dexlib2.DexFileFactory;
+import org.jf.dexlib2.dexbacked.DexBackedClassDef;
+import org.jf.dexlib2.dexbacked.DexBackedDexFile;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
 import java.io.IOException;
 import java.io.Serializable;
-import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.Field;
 import java.lang.reflect.InvocationTargetException;
@@ -29,6 +29,7 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.Comparator;
+import java.util.Enumeration;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -37,6 +38,8 @@ import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.regex.Matcher;
 import java.util.regex.Pattern;
+import java.util.zip.ZipEntry;
+import java.util.zip.ZipFile;
 
 import de.robv.android.xposed.XposedHelpers;
 
@@ -57,7 +60,7 @@ public class CloudMusicPackage {
         return version;
     }
 
-    static void init(Context context) throws PackageManager.NameNotFoundException, IllegalAccessException {
+    static void init(Context context) throws PackageManager.NameNotFoundException {
         version = context.getPackageManager().getPackageInfo(PACKAGE_NAME, 0).versionName;
         NeteaseMusicApplication.init(context);
         Okhttp.init();
@@ -86,13 +89,21 @@ public class CloudMusicPackage {
                 list = new ArrayList<>();
 
                 try {
-                    ApkFile apkFile = new ApkFile(getApkPath());
-                    DexClass[] dexClasses = apkFile.getDexClasses();
-                    for (DexClass dexClass : dexClasses) {
-                        String classType = dexClass.getClassType();
-                        classType = classType.substring(1, classType.length() - 1).replace("/", ".");
-                        list.add(classType);
+                    File apkFile = getApkPath();
+                    // 不用 ZipDexContainer 因为会验证zip里面的文件是不是dex，会慢一点
+                    Enumeration zip = new ZipFile(apkFile).entries();
+                    while (zip.hasMoreElements()) {
+                        ZipEntry dexInZip = (ZipEntry) zip.nextElement();
+                        if (dexInZip.getName().endsWith(".dex")) {
+                            DexBackedDexFile dexFile = DexFileFactory.loadDexEntry(apkFile, dexInZip.getName(), true, null);
+                            for (DexBackedClassDef classDef : dexFile.getClasses()) {
+                                String classType = classDef.getType();
+                                classType = classType.substring(1, classType.length() - 1).replace("/", ".");
+                                list.add(classType);
+                            }
+                        }
                     }
+
                     allClassList = new WeakReference<>(list);
 
                 } catch (Throwable t) {
@@ -177,6 +188,30 @@ public class CloudMusicPackage {
 
     }
 
+    public static class Program {
+        private static Class clazz;
+
+        private final Object program;
+
+        public Program(Object program) {
+            this.program = program;
+        }
+
+        public static Class getClazz() {
+            if (clazz == null) {
+                clazz = findClass("com.netease.cloudmusic.meta.Program", getClassLoader());
+            }
+
+            return clazz;
+        }
+
+        public boolean isLiked() {
+            return (boolean) callMethod(program, "isLiked");
+        }
+
+
+    }
+
     public static class NeteaseMusicUtils {
         private static Class clazz;
 
@@ -247,6 +282,7 @@ public class CloudMusicPackage {
         private static Class clazz;
         private static Field uriField;
         private static Field dataField;
+        private static Field dataMapField;
 
         final Object httpBase;
 
@@ -292,29 +328,34 @@ public class CloudMusicPackage {
         }
 
         public Map<String, String> getRequestData() throws IllegalAccessException {
-            if (dataField == null) {
+            if (dataMapField == null) {
                 Field[] fields = getClazz().getDeclaredFields();
 
                 dataField = Stream.of(fields)
                         .filter(f -> Stream.of(f.getType().getInterfaces()).anyMatch(i -> i == Serializable.class))
                         .filter(f -> Stream.of(f.getType().getDeclaredFields()).anyMatch(pf -> pf.getType() == LinkedHashMap.class))
+                        .filter(f -> Stream.of(f.getType().getDeclaredFields()).anyMatch(pf -> pf.getType().getName().startsWith("okhttp3")))
                         .findFirst().get();
 
                 dataField.setAccessible(true);
 
+                dataMapField = XposedHelpers.findFirstFieldByExactType(dataField.getType(), LinkedHashMap.class);
+
             }
 
-            String dataString = dataField.get(this.httpBase).toString();
-            return Utils.combineRequestData(getUri(), Utils.stringToMap(dataString));
+            Object data = dataField.get(this.httpBase);
+            @SuppressWarnings("unchecked")
+            Map<String, String> dataMap = (Map<String, String>) dataMapField.get(data);
+            return Utils.combineRequestData(getUri(), dataMap);
         }
 
-        public String getUri() throws IllegalAccessException {
+        public Uri getUri() throws IllegalAccessException {
             if (uriField == null) {
                 uriField = XposedHelpers.findFirstFieldByExactType(getClazz(), Uri.class);
                 uriField.setAccessible(true);
 
             }
-            return uriField.get(this.httpBase).toString();
+            return (Uri) uriField.get(this.httpBase);
         }
 
         public static class CookieUtil {
@@ -357,7 +398,7 @@ public class CloudMusicPackage {
             }
 
 
-            static String getDefaultCookie() throws UnsupportedEncodingException, InvocationTargetException, IllegalAccessException {
+            static String getDefaultCookie() throws InvocationTargetException, IllegalAccessException {
                 if (getSingtonMethod == null) {
                     getSingtonMethod = XposedHelpers.findMethodsByExactParameters(getClazz(), getClazz())[0];
                 }
@@ -421,7 +462,7 @@ public class CloudMusicPackage {
                 try {
                     materialDialogWithPositiveBtnMethod = findMethodExact(getClazz(),
                             "materialDialogWithPositiveBtn", Context.class, Object.class, Object.class, View.OnClickListener.class);
-                } catch (NoSuchElementException e) {
+                } catch (Throwable t) {
                     materialDialogWithPositiveBtnMethod = findMethodExact(getClazz(),
                             "a", Context.class, Object.class, Object.class, View.OnClickListener.class);
                 }
@@ -433,6 +474,7 @@ public class CloudMusicPackage {
     public static class PlayerActivity {
         private static Class clazz;
         private static Field musicInfoField;
+        private static Field programField;
         private static Method likeButtonOnClickMethod;
         private final Object playerActivity;
 
@@ -455,7 +497,7 @@ public class CloudMusicPackage {
                     if (playerActivitySuperClass != null) {
 
                         Pattern pattern = Pattern.compile(String.format("^%s\\$(\\d+)", playerActivitySuperClass.getName()));
-                        List<String> list = getFilteredClasses(pattern, new Utils.AlphanumComparator());
+                        List<String> list = getFilteredClasses(pattern, Ordering.natural());
                         int num = Stream.of(list)
                                 .groupBy(s -> {
                                     Matcher m = pattern.matcher(s);
@@ -491,6 +533,14 @@ public class CloudMusicPackage {
             }
 
             return musicInfoField.get(playerActivity);
+        }
+
+        public Object getProgram() throws IllegalAccessException {
+            if (programField == null) {
+                programField = XposedHelpers.findFirstFieldByExactType(playerActivity.getClass(), Program.getClazz());
+            }
+
+            return programField.get(playerActivity);
         }
     }
 

@@ -45,7 +45,7 @@ public class Oversea extends Hooker {
                             String host = json.optString("host");
                             if (host.endsWith("music.126.net")) {
                                 Future future = pool.submit(() -> Utils.getIpByHostViaHttpDns(host));
-                                InetAddress ips[] = (InetAddress[]) future.get();
+                                InetAddress[] ips = (InetAddress[]) future.get();
 
                                 if (ips.length > 0) {
                                     JSONArray array = new JSONArray();

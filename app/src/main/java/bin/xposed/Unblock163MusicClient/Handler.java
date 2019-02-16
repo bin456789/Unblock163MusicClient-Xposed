@@ -1,7 +1,5 @@
 package bin.xposed.Unblock163MusicClient;
 
-import android.content.pm.PackageManager;
-
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -22,6 +20,7 @@ import java.util.regex.Pattern;
 import bin.xposed.Unblock163MusicClient.CloudMusicPackage.HttpEapi;
 
 import static bin.xposed.Unblock163MusicClient.CloudMusicPackage.E.showToast;
+import static bin.xposed.Unblock163MusicClient.Settings.isUpgradeBitrateFrom3rdParty;
 import static de.robv.android.xposed.XposedBridge.log;
 
 public class Handler {
@@ -43,22 +42,27 @@ public class Handler {
         return originalContent;
     }
 
-    public static String modifyPlayerOrDownloadApi(String originalContent, HttpEapi eapi, final String from) throws JSONException, IllegalAccessException, PackageManager.NameNotFoundException {
+    public static String modifyPlayerOrDownloadApi(String originalContent, HttpEapi eapi, final String from) throws JSONException {
         JSONObject originalJson = new JSONObject(originalContent);
 
-        int expectBitrate = Integer.parseInt(eapi.getRequestData().get("br"));
+        int expectBitrate = 320000;
+        try {
+            expectBitrate = Integer.parseInt(eapi.getRequestData().get("br"));
+        } catch (Throwable ignored) {
+        }
+
 
         Object data = originalJson.get("data");
         if (data instanceof JSONObject) {
             JSONObject originalSong = (JSONObject) data;
-            processSong(originalSong, expectBitrate, from);
+            Process.process(originalSong, expectBitrate, from);
         } else {
             JSONArray originalSongs = (JSONArray) data;
             Set<Future> futureSet = new HashSet<>();
             final int finalExpectBitrate = expectBitrate;
             for (int i = 0; i < originalSongs.length(); i++) {
                 final JSONObject songJson = originalSongs.getJSONObject(i);
-                futureSet.add(handlerPool.submit(() -> processSong(songJson, finalExpectBitrate, from)));
+                futureSet.add(handlerPool.submit(() -> Process.process(songJson, finalExpectBitrate, from)));
             }
             for (Future future : futureSet) {
                 try {
@@ -122,108 +126,6 @@ public class Handler {
         return originalContent;
     }
 
-    private static void processSong(JSONObject oldSongJson, int expectBr, String from) {
-        // 异常在这方法里处理，防止影响下一曲
-        if (oldSongJson == null) {
-            return;
-        }
-
-        try {
-            Song oldSong = Song.parseFromOther(oldSongJson);
-
-            // ncm
-            oldSongJson.put("flag", 0);
-
-
-            // 云盘
-            if (oldSong.uf != null) {
-                return;
-            }
-
-            // 原始 mp3 可以连接
-            if (oldSong.br > 0 && oldSong.url != null) {
-                oldSong.accessible = true;
-            }
-
-
-            // 如果本来可以播放，且没有设置强制320k，直接返回
-            if (oldSong.accessible && !Settings.isTryHighBitrate()) {
-                return;
-            }
-
-            // 忽略无损
-            if (expectBr > 320000) {
-                expectBr = 320000;
-            }
-
-            // 要处理的歌曲
-            if (oldSong.url == null
-                    || (oldSong.fee != 0 && oldSong.payed == 0 && oldSong.br < expectBr)) {
-
-                Song preferSong = oldSong;
-                int maxBr = 320000;
-
-
-                // enhance
-                if (oldSong.url == null
-                        && oldSong.fee != 0
-                        && preferSong.getPrefer() < expectBr
-                        && preferSong.getPrefer() < maxBr) {
-                    try {
-                        Song tmp = getSongByRemoteApiEnhance(oldSong.id, expectBr);
-                        preferSong = Song.getPreferSong(tmp, preferSong);
-                    } catch (Throwable t) {
-                        log("songx api failed " + oldSong.id);
-                        log(t);
-                    }
-                }
-
-                // 3rd
-                if (preferSong.getPrefer() < expectBr
-                        && preferSong.getPrefer() < maxBr) {
-                    try {
-                        Song tmp = getSongBy3rdApi(oldSong.id, expectBr);
-                        preferSong = Song.getPreferSong(tmp, preferSong);
-                    } catch (Throwable t) {
-                        log("3rd api failed " + oldSong.id);
-                        log(t);
-                    }
-                }
-
-
-                if (preferSong.getPrefer() > oldSong.getPrefer()) {
-                    oldSongJson.put("br", preferSong.br)
-                            .put("code", 200)
-                            .put("gain", 0)
-                            .put("md5", preferSong.md5)
-                            .put("size", preferSong.size)
-                            .put("type", preferSong.type)
-                            .put("url", preferSong.url);
-
-                    try {
-                        File cacheDir = CloudMusicPackage.NeteaseMusicApplication.getMusicCacheDir();
-                        if (preferSong.is3rdPartySong()) {
-                            String fileName = String.format("%s-%s-%s.%s.xp!", preferSong.id, preferSong.br, preferSong.md5, preferSong.type);
-                            File file = new File(cacheDir, fileName);
-                            String str = preferSong.getMatchedJson().toString();
-                            Utils.writeFile(file, str);
-                        } else {
-                            String start = String.format("%s-", preferSong.id);
-                            String end = ".xp!";
-                            File[] files = Utils.findFiles(cacheDir, start, end, null);
-                            Utils.deleteFiles(files);
-                        }
-                    } catch (Throwable t) {
-                        log("read 3rd party tips failed " + oldSong.id);
-                        log(t);
-                    }
-                }
-            }
-        } catch (Throwable t) {
-            log(t);
-        }
-    }
-
     private static Song getSongByRemoteApi(final long songId, final int expectBitrate) throws Throwable {
         Map<String, String> map = new LinkedHashMap<String, String>() {{
             put("id", String.valueOf(songId));
@@ -262,6 +164,135 @@ public class Handler {
             return Song.parseFromOther(json.getJSONObject("data"));
         }
         return null;
+    }
+
+    static class Process {
+        final JSONObject oldSongJson;
+        final int expectBr;
+        final String from;
+
+        Song originalSong;
+        Song preferSong;
+
+        private Process(JSONObject oldSongJson, int expectBr, String from) {
+            this.oldSongJson = oldSongJson;
+            this.expectBr = expectBr > 320000 ? 320000 : expectBr;  // 忽略无损
+            this.from = from;
+        }
+
+        static void process(JSONObject oldSongJson, int expectBr, String from) {
+            // 异常在这方法里处理，防止影响下一曲
+            try {
+                new Process(oldSongJson, expectBr, from).doProcess();
+            } catch (Throwable t) {
+                log(t);
+            }
+        }
+
+        boolean isNeedToEnhance() {
+            boolean isNeed = false;
+
+            if (preferSong.br < expectBr && originalSong.isFee() && !originalSong.isPayed()) {
+                isNeed = true;
+            }
+
+            // 附加，能听就不去服务器取高音质
+            if (preferSong.isAccessible()) {
+                isNeed = false;
+            }
+
+            return isNeed;
+        }
+
+        boolean isNeedToGet3rdParty() {
+            return !preferSong.isAccessible() || (preferSong.br < expectBr && isUpgradeBitrateFrom3rdParty());
+        }
+
+        boolean isNeedToProcess() {
+            // 云盘
+            if (originalSong.hasUserCloudFile()) {
+                return false;
+            }
+
+
+            return !originalSong.isAccessible() // 听不了
+                    || originalSong.isFreeTrialFile() // 试听
+                    || originalSong.br < expectBr; // 音质不够
+        }
+
+        void doProcess() throws JSONException {
+
+            originalSong = Song.parseFromOther(oldSongJson);
+
+            if (originalSong == null) {
+                return;
+            }
+
+
+            // ncm
+            oldSongJson.put("flag", 0);
+
+
+            // 排除不需要处理的
+            if (!isNeedToProcess()) {
+                return;
+            }
+
+
+            preferSong = originalSong;
+
+
+            // enhance
+            if (isNeedToEnhance()) {
+                try {
+                    Song tmp = getSongByRemoteApiEnhance(originalSong.id, expectBr);
+                    preferSong = Song.getPreferSong(tmp, preferSong);
+                } catch (Throwable t) {
+                    log("songx api failed " + originalSong.id);
+                    log(t);
+                }
+            }
+
+            // 3rd
+            if (isNeedToGet3rdParty()) {
+                try {
+                    Song tmp = getSongBy3rdApi(originalSong.id, expectBr);
+                    preferSong = Song.getPreferSong(tmp, preferSong);
+                } catch (Throwable t) {
+                    log("3rd api failed " + originalSong.id);
+                    log(t);
+                }
+            }
+
+
+            if (preferSong.getPrefer() > originalSong.getPrefer()) {
+                oldSongJson.put("br", preferSong.br)
+                        .put("code", 200)
+                        .put("gain", 0)
+                        .put("md5", preferSong.md5)
+                        .put("size", preferSong.size)
+                        .put("type", preferSong.type)
+                        .put("url", preferSong.url);
+
+                try {
+                    File cacheDir = CloudMusicPackage.NeteaseMusicApplication.getMusicCacheDir();
+                    if (preferSong.is3rdPartySong()) {
+                        String fileName = String.format("%s-%s-%s.%s.xp!", preferSong.id, preferSong.br, preferSong.md5, preferSong.type);
+                        File file = new File(cacheDir, fileName);
+                        String str = preferSong.getMatchedJson().toString();
+                        Utils.writeFile(file, str);
+                    } else {
+                        String start = String.format("%s-", preferSong.id);
+                        String end = ".xp!";
+                        File[] files = Utils.findFiles(cacheDir, start, end, null);
+                        Utils.deleteFiles(files);
+                    }
+                } catch (Throwable t) {
+                    log("read 3rd party tips failed " + originalSong.id);
+                    log(t);
+                }
+            }
+        }
     }
 
 

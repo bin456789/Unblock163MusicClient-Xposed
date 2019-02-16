@@ -17,7 +17,7 @@ public class Dislike extends Hooker {
 
     @Override
     protected void howToHook() throws Throwable {
-        if (Settings.isConfirmDislikeEnabled()) {
+        if (Settings.isDislikeConfirmEnabled()) {
             hookMethod(CloudMusicPackage.PlayerActivity.getLikeButtonOnClickMethod(), new XC_MethodHook() {
                 @Override
                 protected void beforeHookedMethod(final MethodHookParam param) throws Throwable {
