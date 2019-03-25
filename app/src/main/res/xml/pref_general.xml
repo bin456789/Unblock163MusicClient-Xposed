@@ -14,6 +14,7 @@
             android:defaultValue="@string/prevent_gray_default_value"
             android:dependency="@string/unblock_key"
             android:key="@string/prevent_gray_key"
+            android:summary="@string/prevent_gray_summary"
             android:title="@string/prevent_gray_title" />
         <CheckBoxPreference
             android:defaultValue="@string/upgrade_bitrate_from_3rd_party_default_value"
@@ -21,10 +22,18 @@
             android:key="@string/upgrade_bitrate_from_3rd_party_key"
             android:summary="@string/upgrade_bitrate_from_3rd_party_summary"
             android:title="@string/upgrade_bitrate_from_3rd_party_title" />
+    </PreferenceCategory>
+
+    <PreferenceCategory android:title="@string/mise">
         <CheckBoxPreference
             android:defaultValue="@string/dislike_confirm_default_value"
             android:key="@string/dislike_confirm_key"
             android:title="@string/dislike_confirm_title" />
+        <CheckBoxPreference
+            android:defaultValue="@string/magisk_fix_default_value"
+            android:key="@string/magisk_fix_key"
+            android:summary="@string/magisk_fix_summary"
+            android:title="@string/magisk_fix_title" />
         <CheckBoxPreference
             android:key="@string/hide_module_icon_key"
             android:persistent="false"

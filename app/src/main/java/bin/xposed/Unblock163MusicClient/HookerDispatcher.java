@@ -9,17 +9,16 @@ import java.util.List;
 
 import bin.xposed.Unblock163MusicClient.hooker.About;
 import bin.xposed.Unblock163MusicClient.hooker.Dislike;
+import bin.xposed.Unblock163MusicClient.hooker.DnsMod;
 import bin.xposed.Unblock163MusicClient.hooker.Download;
 import bin.xposed.Unblock163MusicClient.hooker.Eapi;
 import bin.xposed.Unblock163MusicClient.hooker.Gray;
 import bin.xposed.Unblock163MusicClient.hooker.HttpMod;
-import bin.xposed.Unblock163MusicClient.hooker.Oversea;
+import bin.xposed.Unblock163MusicClient.hooker.MagiskFix;
 import bin.xposed.Unblock163MusicClient.hooker.QualityBox;
 import bin.xposed.Unblock163MusicClient.hooker.TipsFor3rd;
 import bin.xposed.Unblock163MusicClient.hooker.Transparent;
-import bin.xposed.Unblock163MusicClient.ui.SettingsActivity;
 import de.robv.android.xposed.XC_MethodHook;
-import de.robv.android.xposed.XC_MethodReplacement;
 import de.robv.android.xposed.callbacks.XC_LoadPackage;
 
 import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
@@ -30,38 +29,25 @@ public class HookerDispatcher implements IHookerDispatcher {
 
     @Override
     public void dispatch(XC_LoadPackage.LoadPackageParam lpparam) {
+        findAndHookMethod(findClass("com.netease.cloudmusic.NeteaseMusicApplication", lpparam.classLoader),
+                "attachBaseContext", Context.class, new XC_MethodHook() {
 
+                    @Override
+                    protected void afterHookedMethod(MethodHookParam param) throws Throwable {
 
-        if (Handler.isDomainExpired()) {
-            return;
-        }
+                        Context context = (Context) param.thisObject;
 
-        if (lpparam.packageName.equals(BuildConfig.APPLICATION_ID)) {
-            findAndHookMethod(findClass(SettingsActivity.class.getName(), lpparam.classLoader),
-                    "getActivatedModuleVersion", XC_MethodReplacement.returnConstant(BuildConfig.VERSION_CODE));
-        }
+                        if (isInMainProcess(context)) {
+                            CloudMusicPackage.init(context);
+                            hookMainProcess();
 
-        if (lpparam.packageName.equals(CloudMusicPackage.PACKAGE_NAME)) {
-            findAndHookMethod(findClass("com.netease.cloudmusic.NeteaseMusicApplication", lpparam.classLoader),
-                    "attachBaseContext", Context.class, new XC_MethodHook() {
-
-                        @Override
-                        protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-
-                            Context context = (Context) param.thisObject;
-
-                            if (isInMainProcess(context)) {
-                                CloudMusicPackage.init(context);
-                                hookMainProcess();
-
-                            } else if (isInPlayProcess(context)) {
-                                CloudMusicPackage.init(context);
-                                hookPlayProcess();
-                            }
-
+                        } else if (isInPlayProcess(context)) {
+                            CloudMusicPackage.init(context);
+                            hookPlayProcess();
                         }
-                    });
-        }
+
+                    }
+                });
     }
 
 
@@ -73,13 +59,7 @@ public class HookerDispatcher implements IHookerDispatcher {
             list.add(new HttpMod());
             list.add(new QualityBox());
             list.add(new TipsFor3rd());
-            list.add(new Transparent());
-            list.add(new About());
-
-
-            if (Settings.isOverseaModeEnabled()) {
-                list.add(new Oversea());
-            }
+            list.add(new DnsMod());
 
 
             if (Settings.isPreventGrayEnabled()) {
@@ -94,6 +74,18 @@ public class HookerDispatcher implements IHookerDispatcher {
         }
 
 
+        if (Settings.isTransparentPlayerNavBar() || Settings.isTransparentBaseNavBar()) {
+            list.add(new Transparent());
+        }
+
+        if (Settings.isMagiskFixEnabled()) {
+            list.add(new MagiskFix());
+
+        }
+
+        list.add(new About());
+
+
         for (Hooker hooker : list) {
             hooker.startToHook();
         }
@@ -104,11 +96,7 @@ public class HookerDispatcher implements IHookerDispatcher {
         if (Settings.isUnblockEnabled()) {
             list.add(new Eapi());
             list.add(new HttpMod());
-
-
-            if (Settings.isOverseaModeEnabled()) {
-                list.add(new Oversea());
-            }
+            list.add(new DnsMod());
         }
 
         for (Hooker hooker : list) {

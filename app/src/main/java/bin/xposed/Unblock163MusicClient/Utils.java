@@ -109,11 +109,19 @@ public class Utils {
                 .collect(Collectors.joining("; "));
     }
 
-    public static InetAddress[] getIpByHostViaHttpDns(String domain) throws IOException, InvocationTargetException, IllegalAccessException, JSONException, PackageManager.NameNotFoundException {
+    public static InetAddress[] getIpByHostPretendInChina(String domain) throws IOException, InvocationTargetException, IllegalAccessException, JSONException, PackageManager.NameNotFoundException {
+        return getIpByHostViaHttpDns(domain, "119.29.29.29");
+    }
+
+    public static InetAddress[] getIpByHostPretendOverSea(String domain) throws IOException, InvocationTargetException, IllegalAccessException, JSONException, PackageManager.NameNotFoundException {
+        return getIpByHostViaHttpDns(domain, "45.30.1.1");
+    }
+
+    public static InetAddress[] getIpByHostViaHttpDns(String domain, String pretendIp) throws IOException, InvocationTargetException, IllegalAccessException, JSONException, PackageManager.NameNotFoundException {
         if (dnsCache.containsKey(domain)) {
             return dnsCache.get(domain);
         } else {
-            String raw = Http.get(String.format("http://119.29.29.29/d?dn=%s&ip=119.29.29.29", domain), false)
+            String raw = Http.get(String.format("http://119.29.29.29/d?dn=%s&ip=%s", domain, pretendIp), false)
                     .getResponseText();
             String[] ss = raw.replaceAll("[ \r\n]", "").split(";");
 
@@ -232,8 +240,10 @@ public class Utils {
     }
 
     static void deleteFiles(File[] files) {
-        for (File file : files) {
-            deleteFile(file);
+        if (files != null) {
+            for (File file : files) {
+                deleteFile(file);
+            }
         }
     }
 
@@ -313,6 +323,19 @@ public class Utils {
             }
         }
         throw new RuntimeException("can't get current process name");
+    }
+
+    public static void log(Throwable t) {
+        log("", t);
+    }
+
+
+    public static void log(String message, Throwable t) {
+        if (t.getMessage().toLowerCase().contains("timeout")) {
+            log(t.getMessage() + " " + message);
+        } else {
+            Log.e(TAG, message, t);
+        }
     }
 
     public static void log(String content) {

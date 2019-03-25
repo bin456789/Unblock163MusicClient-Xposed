@@ -1,12 +1,17 @@
 package bin.xposed.Unblock163MusicClient;
 
+import com.annimon.stream.Stream;
+
+import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
+import java.util.ArrayList;
+import java.util.List;
 import java.util.Locale;
 
+import static bin.xposed.Unblock163MusicClient.Utils.log;
 import static bin.xposed.Unblock163MusicClient.Utils.optString;
-import static de.robv.android.xposed.XposedBridge.log;
 
 class Song {
     long id;
@@ -49,6 +54,21 @@ class Song {
         return song;
     }
 
+    static List<Song> parseFromOther(JSONArray songsJson) {
+        if (songsJson == null) {
+            return null;
+        }
+        ArrayList<Song> songs = new ArrayList<>();
+        for (int i = 0; i < songsJson.length(); i++) {
+            JSONObject obj = songsJson.optJSONObject(i);
+            if (obj != null) {
+                songs.add(parseFromOther(obj));
+            }
+        }
+        return songs;
+    }
+
+
     static Song parseFromDetail(JSONObject songJson, long id, int br) {
         Song song = new Song();
         long fid = songJson.optLong("fid");
@@ -65,23 +85,10 @@ class Song {
     }
 
     static Song getPreferSong(Song... songs) {
-        Song preferSong = null;
+        return Stream.of(songs).sortBy(s -> -s.getPrefer(false))
+                .filter(Song::isAccessible)
+                .findFirst().orElse(null);
 
-        for (Song song : songs) {
-            if (song == null) {
-                continue;
-            }
-
-            if (preferSong == null) {
-                preferSong = song;
-                continue;
-            }
-
-            if (song.getPrefer() > preferSong.getPrefer()) {
-                preferSong = song;
-            }
-        }
-        return preferSong;
     }
 
     void parseMatchInfo(JSONObject songJson) {
@@ -106,8 +113,7 @@ class Song {
                     accessible = true;
                 }
             } catch (Throwable t) {
-                log(id + "\n" + br + "\n" + url);
-                log(t);
+                log(String.format("%s %s %s %s", t.getMessage(), id, br, url), t);
             }
         }
         return accessible;
@@ -148,7 +154,11 @@ class Song {
     }
 
     int getPrefer() {
-        if (!isAccessible()) {
+        return getPrefer(true);
+    }
+
+    int getPrefer(boolean checkAccessible) {
+        if (checkAccessible && !isAccessible()) {
             return 0;
         }
 

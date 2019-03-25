@@ -44,7 +44,7 @@ import java.util.zip.ZipFile;
 import de.robv.android.xposed.XposedHelpers;
 
 import static bin.xposed.Unblock163MusicClient.CloudMusicPackage.ClassHelper.getFilteredClasses;
-import static de.robv.android.xposed.XposedBridge.log;
+import static bin.xposed.Unblock163MusicClient.Utils.log;
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
 import static de.robv.android.xposed.XposedHelpers.findClass;
@@ -107,8 +107,7 @@ public class CloudMusicPackage {
                     allClassList = new WeakReference<>(list);
 
                 } catch (Throwable t) {
-                    log("read classes from apk failed");
-                    log(t);
+                    log("read classes from apk failed", t);
                 }
             }
             return list;

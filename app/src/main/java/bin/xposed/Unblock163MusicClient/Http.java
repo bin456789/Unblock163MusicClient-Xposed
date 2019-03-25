@@ -17,6 +17,8 @@ import java.net.URL;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
+import static bin.xposed.Unblock163MusicClient.Utils.log;
+
 @SuppressWarnings("ALL")
 class Http {
     private int responseCode;
@@ -99,14 +101,16 @@ class Http {
                 }
             }
 
+            if ("xmusic.xmusic.top".equals(url.getHost())) {
+                conn.setRequestProperty("Appver", CloudMusicPackage.getVersion());
+                conn.setRequestProperty("Modver", BuildConfig.VERSION_NAME);
+            }
+
 
             // cookie
             if (sendDefaultHead) {
                 conn.setRequestProperty("Cookie", CloudMusicPackage.HttpEapi.CookieUtil.getDefaultCookie());
             }
-
-            conn.setRequestProperty("Appver", CloudMusicPackage.getVersion());
-            conn.setRequestProperty("Modver", BuildConfig.VERSION_NAME);
 
 
             // send post data
@@ -158,6 +162,19 @@ class Http {
             throw t;
         } finally {
             conn.disconnect();
+
+            if (BuildConfig.DEBUG) {
+                if (urlString.contains(".mp3") || urlString.contains(".m4a")) {
+                    log("\t\t path: " + url + " " + responseCode);
+                } else {
+                    log("\t\t ------------------------");
+                    log("\t\t path: " + url);
+                    log("\t\t data: " + (TextUtils.isEmpty(postData) ? "" : postData));
+                    log("\t\t resp: " + responseText);
+                    log("\t\t code: " + responseCode);
+                    log("\t\t ------------------------");
+                }
+            }
         }
 
     }

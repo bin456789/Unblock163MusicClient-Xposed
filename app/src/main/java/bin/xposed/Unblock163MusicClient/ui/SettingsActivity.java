@@ -14,12 +14,16 @@ import android.preference.CheckBoxPreference;
 import android.preference.Preference;
 import android.preference.PreferenceActivity;
 import android.preference.PreferenceManager;
+import android.widget.ListView;
 import android.widget.Toast;
+
+import com.gyf.barlibrary.ImmersionBar;
 
 import java.io.File;
 
 import bin.xposed.Unblock163MusicClient.BuildConfig;
 import bin.xposed.Unblock163MusicClient.R;
+import bin.xposed.Unblock163MusicClient.Settings;
 import bin.xposed.Unblock163MusicClient.Utils;
 
 public class SettingsActivity extends PreferenceActivity implements OnSharedPreferenceChangeListener {
@@ -53,6 +57,8 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 
         setInfo();
         setIcon();
+        checkExpired();
+        removeDivider();
         // checkState();
     }
 
@@ -60,10 +66,21 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         return findPreference(getString(id));
     }
 
+    private void setNavigationBarPreferences() {
+        boolean hasNavigationBar = ImmersionBar.hasNavigationBar(this);
+        findPreference(R.string.transparent_player_navigation_bar_key).setEnabled(hasNavigationBar);
+        findPreference(R.string.transparent_base_navigation_bar_key).setEnabled(hasNavigationBar);
+    }
+
+    private void removeDivider() {
+        ListView listView = findViewById(android.R.id.list);
+        listView.setDivider(null);
+    }
+
     private void setInfo() {
         findPreference(R.string.modver_key).setSummary(BuildConfig.VERSION_NAME);
-        findPreference(R.string.compatible_appver_key).setSummary("4.3 ~ 5.9");
-        findPreference(R.string.best_appver_key).setSummary("5.9");
+        findPreference(R.string.compatible_appver_key).setSummary("4.3 ~ 6.0");
+        findPreference(R.string.best_appver_key).setSummary("6.0");
 
         setOnTenClickListener(findPreference(R.string.modver_key), this::openGithub);
         setOnTenClickListener(findPreference(R.string.author_key), this::openCoolapk);
@@ -99,6 +116,12 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
             Toast.makeText(this, getString(R.string.hint_active, method), Toast.LENGTH_LONG).show();
         } else {
             Toast.makeText(this, getString(R.string.hint_not_active), Toast.LENGTH_LONG).show();
+        }
+    }
+
+    private void checkExpired() {
+        if (Settings.isExpired()) {
+            Toast.makeText(this, getString(R.string.hint_expired), Toast.LENGTH_LONG).show();
         }
     }
 
@@ -174,6 +197,8 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
         super.onResume();
         PreferenceManager.getDefaultSharedPreferences(this)
                 .registerOnSharedPreferenceChangeListener(this);
+
+        setNavigationBarPreferences();
     }
 
     @Override

@@ -2,6 +2,7 @@ package bin.xposed.Unblock163MusicClient.hooker;
 
 import android.annotation.TargetApi;
 import android.app.Activity;
+import android.content.Intent;
 import android.graphics.Color;
 import android.os.Build;
 import android.os.Bundle;
@@ -17,14 +18,16 @@ import bin.xposed.Unblock163MusicClient.CloudMusicPackage;
 import bin.xposed.Unblock163MusicClient.Hooker;
 import bin.xposed.Unblock163MusicClient.Settings;
 import de.robv.android.xposed.XC_MethodHook;
-import de.robv.android.xposed.XposedBridge;
 import de.robv.android.xposed.XposedHelpers;
 
+import static bin.xposed.Unblock163MusicClient.Utils.log;
 import static com.gyf.barlibrary.ImmersionBar.getNavigationBarHeight;
 import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
 
 public class Transparent extends Hooker {
 
+
+    private Boolean hasNavigationBar;
 
     @Override
     protected void howToHook() throws Throwable {
@@ -57,7 +60,7 @@ public class Transparent extends Hooker {
             protected void afterHookedMethod(MethodHookParam param) {
                 Activity playerActivity = (Activity) param.thisObject;
 
-                if (ImmersionBar.hasNavigationBar(playerActivity)) {
+                if (hasNavigationBar(playerActivity)) {
                     ViewGroup rootView = (ViewGroup) ((ViewGroup) playerActivity.findViewById(android.R.id.content)).getChildAt(0);
                     int navigationBarHeight = getNavigationBarHeight(playerActivity);
 
@@ -71,7 +74,7 @@ public class Transparent extends Hooker {
                             if (child.getClass().getSimpleName().endsWith("Toolbar")) {
                                 lyricView = rootView.getChildAt(i - 1);
 
-                                // 5.x ~ 5.9
+                                // 5.x ~ 6.x
                             } else if (child.getClass().getSimpleName().endsWith("ViewContainer")) {
                                 lyricView = child;
                             }
@@ -98,11 +101,10 @@ public class Transparent extends Hooker {
                 findAndHookMethod("com.netease.cloudmusic.activity." + s, CloudMusicPackage.getClassLoader(),
                         "onCreate", Bundle.class, methodHook);
             } catch (Throwable t) {
-                XposedBridge.log(t);
+                log(t);
             }
         }
     }
-
 
     private void transparentBaseNavBar() {
         Class clazz = XposedHelpers.findClass("com.netease.cloudmusic.activity.MainActivity", CloudMusicPackage.getClassLoader());
@@ -116,8 +118,7 @@ public class Transparent extends Hooker {
             @Override
             protected void afterHookedMethod(MethodHookParam param) {
                 Activity activity = (Activity) param.thisObject;
-
-                if (ImmersionBar.hasNavigationBar(activity)) {
+                if (hasNavigationBar(activity) && shouldTransparent(activity)) {
                     setNavigationTransparent(activity);
                 }
             }
@@ -127,8 +128,21 @@ public class Transparent extends Hooker {
         try {
             findAndHookMethod(clazz, "onCreate", Bundle.class, methodHook);
         } catch (Throwable t) {
-            XposedBridge.log(t);
+            log(t);
         }
+    }
+
+    private boolean hasNavigationBar(Activity activity) {
+        if (hasNavigationBar == null) {
+            hasNavigationBar = ImmersionBar.hasNavigationBar(activity);
+        }
+        return hasNavigationBar;
+    }
+
+    private boolean shouldTransparent(Activity activity) {
+        // fix SharePanelActivity
+        return (activity.getIntent().getFlags() & Intent.FLAG_ACTIVITY_SINGLE_TOP) == 0
+                || activity.isTaskRoot();
     }
 
     @TargetApi(Build.VERSION_CODES.LOLLIPOP)

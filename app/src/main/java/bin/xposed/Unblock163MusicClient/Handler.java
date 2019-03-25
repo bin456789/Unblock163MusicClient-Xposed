@@ -1,17 +1,20 @@
 package bin.xposed.Unblock163MusicClient;
 
+import com.google.common.collect.Iterables;
+
 import org.json.JSONArray;
 import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.io.File;
-import java.util.Calendar;
-import java.util.Date;
-import java.util.GregorianCalendar;
+import java.util.ArrayList;
+import java.util.Collections;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.concurrent.Callable;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -21,19 +24,14 @@ import bin.xposed.Unblock163MusicClient.CloudMusicPackage.HttpEapi;
 
 import static bin.xposed.Unblock163MusicClient.CloudMusicPackage.E.showToast;
 import static bin.xposed.Unblock163MusicClient.Settings.isUpgradeBitrateFrom3rdParty;
-import static de.robv.android.xposed.XposedBridge.log;
+import static bin.xposed.Unblock163MusicClient.Utils.log;
 
 public class Handler {
     private static final String XAPI = "http://xmusic.xmusic.top/xapi/v1/";
-    private static final Date DOMAIN_EXPIRED_DATE = new GregorianCalendar(2019, 10 - 1, 1).getTime();
     private static final Pattern REX_PL = Pattern.compile("\"pl\":(?!999000)\\d+");
     private static final Pattern REX_DL = Pattern.compile("\"dl\":(?!999000)\\d+");
     private static final Pattern REX_SUBP = Pattern.compile("\"subp\":\\d+");
     private static final ExecutorService handlerPool = Executors.newCachedThreadPool();
-
-    static boolean isDomainExpired() {
-        return Calendar.getInstance().getTime().after(DOMAIN_EXPIRED_DATE);
-    }
 
     public static String modifyByRegex(String originalContent) {
         originalContent = REX_PL.matcher(originalContent).replaceAll("\"pl\":320000");
@@ -126,44 +124,28 @@ public class Handler {
         return originalContent;
     }
 
-    private static Song getSongByRemoteApi(final long songId, final int expectBitrate) throws Throwable {
-        Map<String, String> map = new LinkedHashMap<String, String>() {{
-            put("id", String.valueOf(songId));
-            put("br", String.valueOf(expectBitrate));
-            put("withHQ", "1");
-        }};
-        String raw = Http.post(XAPI + "song", map, false).getResponseText();
-        JSONObject json = new JSONObject(raw);
-        if (json.getInt("code") == 200) {
-            return Song.parseFromOther(json.getJSONObject("data"));
-        }
-        return null;
-    }
+    private static List<Song> getSongByRemoteApi(final long songId, final int expectBitrate, final String apiName) {
+        try {
+            Map<String, String> map = new LinkedHashMap<String, String>() {{
+                put("id", String.valueOf(songId));
+                put("br", String.valueOf(expectBitrate));
+            }};
 
-    private static Song getSongByRemoteApiEnhance(final long songId, final int expectBitrate) throws Throwable {
-        Map<String, String> map = new LinkedHashMap<String, String>() {{
-            put("id", String.valueOf(songId));
-            put("br", String.valueOf(expectBitrate));
-        }};
-        String raw = Http.post(XAPI + "songx", map, false).getResponseText();
-        JSONObject json = new JSONObject(raw);
-        if (json.getInt("code") == 200) {
-            return Song.parseFromOther(json.getJSONObject("data"));
-        }
-        return null;
-    }
+            String raw = Http.post(XAPI + apiName, map, false).getResponseText();
 
-    private static Song getSongBy3rdApi(final long songId, final int expectBitrate) throws Throwable {
-        Map<String, String> map = new LinkedHashMap<String, String>() {{
-            put("id", String.valueOf(songId));
-            put("br", String.valueOf(expectBitrate));
-        }};
-        String raw = Http.post(XAPI + "match", map, false).getResponseText();
-        JSONObject json = new JSONObject(raw);
-        if (json.getInt("code") == 200) {
-            return Song.parseFromOther(json.getJSONObject("data"));
+            JSONObject json = new JSONObject(raw);
+            if (json.getInt("code") == 200) {
+                Object obj = json.get("data");
+                if (obj instanceof JSONObject) {
+                    return Collections.singletonList(Song.parseFromOther((JSONObject) obj));
+                } else if (obj instanceof JSONArray) {
+                    return Song.parseFromOther((JSONArray) obj);
+                }
+            }
+        } catch (Throwable t) {
+            log(apiName + " api failed " + songId, t);
         }
-        return null;
+        return new ArrayList<>();
     }
 
     static class Process {
@@ -187,6 +169,10 @@ public class Handler {
             } catch (Throwable t) {
                 log(t);
             }
+        }
+
+        boolean isNeedToGetP1() {
+            return !preferSong.isAccessible() || preferSong.br < expectBr;
         }
 
         boolean isNeedToEnhance() {
@@ -220,6 +206,24 @@ public class Handler {
                     || originalSong.br < expectBr; // 音质不够
         }
 
+        private void addRC(Callable condition, Callable callable) {
+            try {
+                if ((boolean) condition.call()) {
+                    List<Song> songList = new ArrayList<>();
+                    songList.add(preferSong);
+                    songList.addAll((List<Song>) callable.call());
+
+                    Song[] songArray = Iterables.toArray(songList, Song.class);
+                    Song tmp = Song.getPreferSong(songArray);
+                    if (tmp != null) {
+                        preferSong = tmp;
+                    }
+                }
+            } catch (Throwable t) {
+                log(t);
+            }
+        }
+
         void doProcess() throws JSONException {
 
             originalSong = Song.parseFromOther(oldSongJson);
@@ -241,29 +245,9 @@ public class Handler {
 
             preferSong = originalSong;
 
-
-            // enhance
-            if (isNeedToEnhance()) {
-                try {
-                    Song tmp = getSongByRemoteApiEnhance(originalSong.id, expectBr);
-                    preferSong = Song.getPreferSong(tmp, preferSong);
-                } catch (Throwable t) {
-                    log("songx api failed " + originalSong.id);
-                    log(t);
-                }
-            }
-
-            // 3rd
-            if (isNeedToGet3rdParty()) {
-                try {
-                    Song tmp = getSongBy3rdApi(originalSong.id, expectBr);
-                    preferSong = Song.getPreferSong(tmp, preferSong);
-                } catch (Throwable t) {
-                    log("3rd api failed " + originalSong.id);
-                    log(t);
-                }
-            }
-
+            addRC(this::isNeedToGetP1, () -> getSongByRemoteApi(originalSong.id, expectBr, "songs"));
+            addRC(this::isNeedToEnhance, () -> getSongByRemoteApi(originalSong.id, expectBr, "songx"));
+            addRC(this::isNeedToGet3rdParty, () -> getSongByRemoteApi(originalSong.id, expectBr, "match"));
 
             if (preferSong.getPrefer() > originalSong.getPrefer()) {
                 oldSongJson.put("br", preferSong.br)
@@ -288,8 +272,7 @@ public class Handler {
                         Utils.deleteFiles(files);
                     }
                 } catch (Throwable t) {
-                    log("read 3rd party tips failed " + originalSong.id);
-                    log(t);
+                    log("read 3rd party tips failed " + originalSong.id, t);
                 }
             }
         }

@@ -27,7 +27,7 @@ public class HotXposed {
             return;
         }
 
-        filterNotify(lpparam);
+//        filterNotify(lpparam);
 
         PathClassLoader classLoader =
                 new PathClassLoader(apkFile.getAbsolutePath(), lpparam.getClass().getClassLoader());

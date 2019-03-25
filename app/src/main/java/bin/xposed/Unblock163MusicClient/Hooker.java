@@ -1,6 +1,6 @@
 package bin.xposed.Unblock163MusicClient;
 
-import de.robv.android.xposed.XposedBridge;
+import static bin.xposed.Unblock163MusicClient.Utils.log;
 
 public abstract class Hooker {
 
@@ -10,7 +10,7 @@ public abstract class Hooker {
         try {
             howToHook();
         } catch (Throwable t) {
-            XposedBridge.log(t);
+            log(t);
         }
     }
 }

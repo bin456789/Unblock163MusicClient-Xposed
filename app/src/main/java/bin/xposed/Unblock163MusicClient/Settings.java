@@ -3,14 +3,23 @@ package bin.xposed.Unblock163MusicClient;
 import android.content.res.Resources;
 
 import java.lang.ref.WeakReference;
+import java.util.Calendar;
+import java.util.Date;
+import java.util.GregorianCalendar;
 
 import de.robv.android.xposed.XSharedPreferences;
-import de.robv.android.xposed.XposedBridge;
+
+import static bin.xposed.Unblock163MusicClient.Utils.log;
 
 public class Settings {
+    private static final Date EXPIRED_DATE = new GregorianCalendar(2019, 10 - 1, 1).getTime();
     private static String chinaIP;
     private static WeakReference<XSharedPreferences> weakModulePreferences = new WeakReference<>(null);
     private static WeakReference<Resources> weakModuleResources = new WeakReference<>(null);
+
+    public static boolean isExpired() {
+        return Calendar.getInstance().getTime().after(EXPIRED_DATE);
+    }
 
     private static XSharedPreferences getModuleSharedPreferences() {
         XSharedPreferences preferences = weakModulePreferences.get();
@@ -31,7 +40,7 @@ public class Settings {
                 resources = Utils.getModuleResources();
                 weakModuleResources = new WeakReference<>(resources);
             } catch (Throwable t) {
-                XposedBridge.log(t);
+                log(t);
             }
 
         }
@@ -62,6 +71,10 @@ public class Settings {
 
     public static boolean isDislikeConfirmEnabled() {
         return getModulePreferencesBoolean(R.string.dislike_confirm_key, R.string.dislike_confirm_default_value);
+    }
+
+    public static boolean isMagiskFixEnabled() {
+        return getModulePreferencesBoolean(R.string.magisk_fix_key, R.string.magisk_fix_default_value);
     }
 
     public static boolean isPreventGrayEnabled() {

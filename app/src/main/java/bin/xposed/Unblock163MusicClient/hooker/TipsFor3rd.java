@@ -6,7 +6,7 @@ import bin.xposed.Unblock163MusicClient.CloudMusicPackage;
 import bin.xposed.Unblock163MusicClient.Hooker;
 import de.robv.android.xposed.XC_MethodHook;
 
-import static de.robv.android.xposed.XposedBridge.log;
+import static bin.xposed.Unblock163MusicClient.Utils.log;
 import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
 
 public class TipsFor3rd extends Hooker {

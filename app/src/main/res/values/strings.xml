@@ -13,6 +13,7 @@
     <string name="hint_reboot_setting_changed">重启或结束音乐软件进程后生效</string>
     <string name="hint_active">模块已激活，通过 %s</string>
     <string name="hint_not_active">模块未激活</string>
+    <string name="hint_expired">模块已过期，请更新</string>
 
     <string name="active_now">立即激活</string>
     <string name="xposed_installer_not_installed">Xposed Installer 未安装</string>
@@ -34,6 +35,13 @@
     <string name="dislike_confirm_title">在取消红心前请求确认</string>
     <string name="dislike_confirm_question">确定取消红心？</string>
 
+    <string name="magisk_fix_key" translatable="false">magisk_fix</string>
+    <string name="magisk_fix_default_value">false</string>
+    <string name="magisk_fix_title">修复 Magisk 冲突</string>
+    <string name="magisk_fix_summary">如果遇到本地歌曲不能扫描
+        \n方法1：Magisk Hide 勾选音乐软件（推荐）
+        \n方法2：勾选这个选项</string>
+
     <string name="upgrade_bitrate_from_3rd_party_key" translatable="false">upgrade_bitrate_from_3rd_party</string>
     <string name="upgrade_bitrate_from_3rd_party_default_value">false</string>
     <string name="upgrade_bitrate_from_3rd_party_title">尝试获得高音质，即使歌曲本身可播放</string>
@@ -42,7 +50,9 @@
     <string name="prevent_gray_key" translatable="false">prevent_gray</string>
     <string name="prevent_gray_default_value">false</string>
     <string name="prevent_gray_title">不变灰</string>
+    <string name="prevent_gray_summary">只影响显示效果，与能否播放无关</string>
 
+    <string name="mise">杂项</string>
     <string name="hide_module_icon_key" translatable="false">hide_module_icon</string>
     <string name="hide_module_icon_title">隐藏本模块图标</string>
 

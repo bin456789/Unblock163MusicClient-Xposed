@@ -8,9 +8,9 @@ import bin.xposed.Unblock163MusicClient.Hooker;
 import bin.xposed.Unblock163MusicClient.Settings;
 import de.robv.android.xposed.XC_MethodHook;
 
+import static bin.xposed.Unblock163MusicClient.Utils.log;
 import static de.robv.android.xposed.XposedBridge.hookMethod;
 import static de.robv.android.xposed.XposedBridge.invokeOriginalMethod;
-import static de.robv.android.xposed.XposedBridge.log;
 import static de.robv.android.xposed.XposedHelpers.getObjectField;
 
 public class Dislike extends Hooker {
