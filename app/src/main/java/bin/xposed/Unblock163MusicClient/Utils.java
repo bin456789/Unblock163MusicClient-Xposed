@@ -46,7 +46,7 @@ import static de.robv.android.xposed.XposedHelpers.findClass;
 @SuppressWarnings({"unused", "WeakerAccess"})
 public class Utils {
     private static final String TAG = "unblock163";
-    private static Map<String, InetAddress[]> dnsCache = new HashMap<>();
+    private static final Map<String, InetAddress[]> dnsCache = new HashMap<>();
     private static WeakReference<Resources> moduleResources = new WeakReference<>(null);
 
     static String getFirstPartOfString(String str, String separator) {
@@ -204,12 +204,12 @@ public class Utils {
         Files.asCharSink(file, Charsets.UTF_8).write(string);
     }
 
-    static File findFirstFile(File dir, final String start, final String end) {
+    static File findFirstFile(File dir, String start, String end) {
         File[] fs = findFiles(dir, start, end, 1);
         return fs != null && fs.length > 0 ? fs[0] : null;
     }
 
-    static File[] findFiles(File dir, final String start, final String end, final Integer limit) {
+    static File[] findFiles(File dir, String start, String end, Integer limit) {
         if (dir != null && dir.exists() && dir.isDirectory()) {
             return dir.listFiles(new FilenameFilter() {
                 int find = 0;
@@ -280,27 +280,6 @@ public class Utils {
         } catch (PackageManager.NameNotFoundException e) {
             return false;
         }
-    }
-
-    public static boolean isCallFromMyself() {
-        StackTraceElement[] elements = Thread.currentThread().getStackTrace();
-        boolean findAppStack = false;
-        boolean findModStack = false;
-
-        for (StackTraceElement element : elements) {
-            if (!findAppStack && element.getClassName().startsWith(BuildConfig.APPLICATION_ID)) {
-                findAppStack = true;
-                continue;
-            }
-            if (findAppStack && element.getClassName().startsWith(CloudMusicPackage.PACKAGE_NAME)) {
-                findModStack = true;
-                continue;
-            }
-            if (findModStack && element.getClassName().startsWith(BuildConfig.APPLICATION_ID)) {
-                return true;
-            }
-        }
-        return false;
     }
 
     public static void postDelayed(Runnable runnable, long delay) {

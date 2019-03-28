@@ -15,9 +15,8 @@ public class Main implements IXposedHookLoadPackage {
 
         if (lpparam.packageName.equals(CloudMusicPackage.PACKAGE_NAME)) {
             HotXposed.hook(HookerDispatcher.class, lpparam);
-        }
 
-        if (lpparam.packageName.equals(BuildConfig.APPLICATION_ID)) {
+        } else if (lpparam.packageName.equals(BuildConfig.APPLICATION_ID)) {
             HotXposed.hook(HookerDispatcherSelf.class, lpparam);
         }
     }

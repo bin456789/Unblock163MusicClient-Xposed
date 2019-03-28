@@ -24,7 +24,7 @@
             android:title="@string/upgrade_bitrate_from_3rd_party_title" />
     </PreferenceCategory>
 
-    <PreferenceCategory android:title="@string/mise">
+    <PreferenceCategory android:title="@string/misc">
         <CheckBoxPreference
             android:defaultValue="@string/dislike_confirm_default_value"
             android:key="@string/dislike_confirm_key"

@@ -2,29 +2,18 @@ package bin.xposed.Unblock163MusicClient.hooker;
 
 import bin.xposed.Unblock163MusicClient.CloudMusicPackage;
 import bin.xposed.Unblock163MusicClient.Hooker;
-import bin.xposed.Unblock163MusicClient.Settings;
-import bin.xposed.Unblock163MusicClient.Utils;
-import de.robv.android.xposed.XC_MethodHook;
+import de.robv.android.xposed.XC_MethodReplacement;
 
-import static de.robv.android.xposed.XposedHelpers.findAndHookMethod;
+import static de.robv.android.xposed.XposedBridge.hookMethod;
 
 public class Gray extends Hooker {
 
     @Override
     protected void howToHook() throws Throwable {
 
-        if (Settings.isPreventGrayEnabled()) {
+        // 或者 canHighLightMusic
+        hookMethod(CloudMusicPackage.MusicInfo.getHasCopyRightMethod(), XC_MethodReplacement.returnConstant(true));
 
-            findAndHookMethod(CloudMusicPackage.MusicInfo.getClazz(), "hasCopyRight", new XC_MethodHook() {
-                @Override
-                protected void afterHookedMethod(MethodHookParam param) throws Throwable {
-                    if (!Utils.isCallFromMyself()) {
-                        param.setResult(true);
-                    }
-                }
-            });
-
-        }
     }
 }
 

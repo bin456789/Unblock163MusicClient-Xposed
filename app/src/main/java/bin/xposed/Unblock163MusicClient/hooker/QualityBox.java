@@ -8,7 +8,6 @@ import bin.xposed.Unblock163MusicClient.Hooker;
 import de.robv.android.xposed.XC_MethodHook;
 
 import static de.robv.android.xposed.XposedBridge.hookMethod;
-import static de.robv.android.xposed.XposedHelpers.callMethod;
 
 public class QualityBox extends Hooker {
 
@@ -20,7 +19,8 @@ public class QualityBox extends Hooker {
                         Object currentActivity = param.args[0];
                         if (PlayerActivity.getClazz().isInstance(currentActivity)) {
                             Object musicInfo = new PlayerActivity(currentActivity).getMusicInfo();
-                            if (!(boolean) callMethod(musicInfo, "hasCopyRight")) {
+                            boolean hasCopyRight = new CloudMusicPackage.MusicInfo(musicInfo).hasCopyRight();
+                            if (!hasCopyRight) {
                                 SpannableString ssOld = (SpannableString) param.args[1];
                                 SpannableString ssNew = new SpannableString(ssOld.toString().replace("付费独享", "下架歌曲"));
                                 Object[] spans = ssOld.getSpans(0, ssOld.length(), Object.class);

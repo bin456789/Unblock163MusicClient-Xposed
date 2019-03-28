@@ -45,6 +45,7 @@ import de.robv.android.xposed.XposedHelpers;
 
 import static bin.xposed.Unblock163MusicClient.CloudMusicPackage.ClassHelper.getFilteredClasses;
 import static bin.xposed.Unblock163MusicClient.Utils.log;
+import static de.robv.android.xposed.XposedBridge.invokeOriginalMethod;
 import static de.robv.android.xposed.XposedHelpers.callMethod;
 import static de.robv.android.xposed.XposedHelpers.callStaticMethod;
 import static de.robv.android.xposed.XposedHelpers.findClass;
@@ -138,6 +139,7 @@ public class CloudMusicPackage {
         private static Class clazz;
 
         private final Object musicInfo;
+        private static Method hasCopyRightMethod;
 
         public MusicInfo(Object musicInfo) {
             this.musicInfo = musicInfo;
@@ -151,8 +153,24 @@ public class CloudMusicPackage {
             return clazz;
         }
 
+        public static Method getHasCopyRightMethod() {
+            if (hasCopyRightMethod == null) {
+                hasCopyRightMethod = findMethodExact(getClazz(), "hasCopyRight");
+            }
+            return hasCopyRightMethod;
+        }
+
         public static boolean isStarred(long musicId) {
-            return (boolean) callStaticMethod(MusicInfo.getClazz(), "isStarred", musicId);
+            return (boolean) callStaticMethod(getClazz(), "isStarred", musicId);
+        }
+
+        public boolean hasCopyRight() throws InvocationTargetException, IllegalAccessException {
+            if (Settings.isPreventGrayEnabled()) {
+                return (boolean) invokeOriginalMethod(getHasCopyRightMethod(), musicInfo, null);
+            } else {
+                // workaround "method not hooked, cannot call original method"
+                return (boolean) getHasCopyRightMethod().invoke(musicInfo);
+            }
         }
 
         public long getMatchedMusicId() {
@@ -175,9 +193,9 @@ public class CloudMusicPackage {
                     song.parseMatchInfo(new JSONObject(jsonStr));
                     if (song.is3rdPartySong()) {
                         return String.format("(音源%s：%s - %s)",
-                                song.matchedPlatform,
-                                song.matchedArtistName,
-                                song.matchedSongName);
+                                song.getMatchedPlatform(),
+                                song.getMatchedArtistName(),
+                                song.getMatchedSongName());
                     }
                 }
             }
@@ -359,7 +377,7 @@ public class CloudMusicPackage {
 
         public static class CookieUtil {
             private static Class clazz;
-            private static Method getSingtonMethod;
+            private static Method getSingletonMethod;
             private static Method getListMethod;
 
             static Class getClazz() {
@@ -398,14 +416,14 @@ public class CloudMusicPackage {
 
 
             static String getDefaultCookie() throws InvocationTargetException, IllegalAccessException {
-                if (getSingtonMethod == null) {
-                    getSingtonMethod = XposedHelpers.findMethodsByExactParameters(getClazz(), getClazz())[0];
+                if (getSingletonMethod == null) {
+                    getSingletonMethod = XposedHelpers.findMethodsByExactParameters(getClazz(), getClazz())[0];
                 }
                 if (getListMethod == null) {
                     getListMethod = XposedHelpers.findMethodsByExactParameters(getClazz(), List.class)[0];
                 }
 
-                Object singleton = getSingtonMethod.invoke(null);
+                Object singleton = getSingletonMethod.invoke(null);
                 List cookieList = (List) getListMethod.invoke(singleton);
                 return Utils.serialCookies(cookieList, cookieMethodMap, "music.163.com");
 
@@ -503,15 +521,16 @@ public class CloudMusicPackage {
                                     return m.find() ? Integer.parseInt(m.group(1)) : -1;
                                 })
                                 .filter(g -> g.getKey() > -1)
-                                .max((x, y) -> {
-                                    int sizeDiff = x.getValue().size() - y.getValue().size();
-                                    if (sizeDiff != 0) {
-                                        return sizeDiff;
+                                .reduce((x, y) -> {
+                                    if (x.getValue().size() > y.getValue().size()) {
+                                        return x;
                                     }
-                                    int nameDiff = x.getKey() - y.getKey();
-                                    return -nameDiff;
-                                }).get().getKey();
-
+                                    if (x.getKey() > y.getKey()) {
+                                        return x;
+                                    }
+                                    return y;
+                                })
+                                .get().getKey();
 
                         if (num >= 0) {
                             likeButtonOnClickMethod = findMethodExact(playerActivitySuperClass.getName() + "$" + num, getClassLoader(), "onClick", View.class);
@@ -585,7 +604,7 @@ public class CloudMusicPackage {
             return clazz;
         }
 
-        static void showToast(final String text) {
+        static void showToast(String text) {
             Utils.postDelayed(() -> {
                 try {
                     // Toast.makeText(NeteaseMusicApplication.getApplication(), text, Toast.LENGTH_SHORT).show();

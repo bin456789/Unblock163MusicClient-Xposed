@@ -29,13 +29,13 @@ public class DnsMod extends Hooker {
                 protected void beforeHookedMethod(MethodHookParam param) throws Throwable {
                     String host = (String) param.args[0];
                     if (host.endsWith("p1c.music.126.net")) {
-                        Future future = pool.submit(() -> Utils.getIpByHostPretendOverSea(host));
-                        InetAddress[] ips = (InetAddress[]) future.get();
+                        Future<InetAddress[]> future = pool.submit(() -> Utils.getIpByHostPretendOverSea(host));
+                        InetAddress[] ips = future.get();
                         param.setResult("getAllByName".equals(param.method.getName()) ? ips : ips[0]);
 
                     } else if (host.endsWith("music.126.net") && Settings.isOverseaModeEnabled()) {
-                        Future future = pool.submit(() -> Utils.getIpByHostPretendInChina(host));
-                        InetAddress[] ips = (InetAddress[]) future.get();
+                        Future<InetAddress[]> future = pool.submit(() -> Utils.getIpByHostPretendInChina(host));
+                        InetAddress[] ips = future.get();
                         param.setResult("getAllByName".equals(param.method.getName()) ? ips : ips[0]);
                     }
                 }
@@ -50,8 +50,8 @@ public class DnsMod extends Hooker {
                         JSONObject json = (JSONObject) param.args[0];
                         String host = json.optString("host");
                         if (host.endsWith("p1c.music.126.net")) {
-                            Future future = pool.submit(() -> Utils.getIpByHostPretendOverSea(host));
-                            InetAddress[] ips = (InetAddress[]) future.get();
+                            Future<InetAddress[]> future = pool.submit(() -> Utils.getIpByHostPretendOverSea(host));
+                            InetAddress[] ips = future.get();
                             if (ips.length > 0) {
                                 JSONArray array = new JSONArray();
                                 for (InetAddress ip : ips) {
@@ -62,8 +62,8 @@ public class DnsMod extends Hooker {
 
 
                         } else if (host.endsWith("music.126.net") && Settings.isOverseaModeEnabled()) {
-                            Future future = pool.submit(() -> Utils.getIpByHostPretendInChina(host));
-                            InetAddress[] ips = (InetAddress[]) future.get();
+                            Future<InetAddress[]> future = pool.submit(() -> Utils.getIpByHostPretendInChina(host));
+                            InetAddress[] ips = future.get();
                             if (ips.length > 0) {
                                 JSONArray array = new JSONArray();
                                 for (InetAddress ip : ips) {

@@ -52,7 +52,7 @@
     <string name="prevent_gray_title">不变灰</string>
     <string name="prevent_gray_summary">只影响显示效果，与能否播放无关</string>
 
-    <string name="mise">杂项</string>
+    <string name="misc">杂项</string>
     <string name="hide_module_icon_key" translatable="false">hide_module_icon</string>
     <string name="hide_module_icon_title">隐藏本模块图标</string>
 

@@ -36,23 +36,29 @@ public class HookerDispatcher implements IHookerDispatcher {
                     protected void afterHookedMethod(MethodHookParam param) throws Throwable {
 
                         Context context = (Context) param.thisObject;
+                        String processName = Utils.getCurrentProcessName(context);
+                        List<Hooker> hookers = null;
 
-                        if (isInMainProcess(context)) {
-                            CloudMusicPackage.init(context);
-                            hookMainProcess();
+                        if (processName.equals(CloudMusicPackage.PACKAGE_NAME)) {
+                            hookers = getMainProcessHookers();
 
-                        } else if (isInPlayProcess(context)) {
-                            CloudMusicPackage.init(context);
-                            hookPlayProcess();
+                        } else if (processName.equals(CloudMusicPackage.PACKAGE_NAME + ":play")) {
+                            hookers = getPlayProcessHookers();
                         }
 
+                        if (hookers != null && hookers.size() > 0) {
+                            CloudMusicPackage.init(context);
+                            for (Hooker hooker : hookers) {
+                                hooker.startToHook();
+                            }
+                        }
                     }
                 });
     }
 
-
-    private void hookMainProcess() {
+    private List<Hooker> getMainProcessHookers() {
         List<Hooker> list = new ArrayList<>();
+        list.add(new About());
         if (Settings.isUnblockEnabled()) {
             list.add(new Eapi());
             list.add(new Download());
@@ -60,57 +66,31 @@ public class HookerDispatcher implements IHookerDispatcher {
             list.add(new QualityBox());
             list.add(new TipsFor3rd());
             list.add(new DnsMod());
-
-
             if (Settings.isPreventGrayEnabled()) {
                 list.add(new Gray());
             }
-
         }
-
-
         if (Settings.isDislikeConfirmEnabled()) {
             list.add(new Dislike());
         }
-
-
         if (Settings.isTransparentPlayerNavBar() || Settings.isTransparentBaseNavBar()) {
             list.add(new Transparent());
         }
-
         if (Settings.isMagiskFixEnabled()) {
             list.add(new MagiskFix());
-
         }
-
-        list.add(new About());
-
-
-        for (Hooker hooker : list) {
-            hooker.startToHook();
-        }
+        return list;
     }
 
-    private void hookPlayProcess() {
+    private List<Hooker> getPlayProcessHookers() {
         List<Hooker> list = new ArrayList<>();
         if (Settings.isUnblockEnabled()) {
             list.add(new Eapi());
             list.add(new HttpMod());
             list.add(new DnsMod());
         }
-
-        for (Hooker hooker : list) {
-            hooker.startToHook();
-        }
+        return list;
     }
 
 
-    private boolean isInMainProcess(Context context) {
-        return Utils.getCurrentProcessName(context).equals(CloudMusicPackage.PACKAGE_NAME);
-    }
-
-
-    private boolean isInPlayProcess(Context context) {
-        return Utils.getCurrentProcessName(context).equals(CloudMusicPackage.PACKAGE_NAME + ":play");
-    }
 }
