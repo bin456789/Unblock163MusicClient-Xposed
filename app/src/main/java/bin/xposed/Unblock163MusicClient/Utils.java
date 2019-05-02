@@ -31,6 +31,7 @@ import java.io.UnsupportedEncodingException;
 import java.lang.ref.WeakReference;
 import java.lang.reflect.InvocationTargetException;
 import java.net.InetAddress;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -89,7 +90,6 @@ public class Utils {
         }
     }
 
-    @SuppressWarnings("deprecation")
     static String serialCookies(List cookieList, Map<String, String> cookieMethods, String filterDomain) {
         String domainMethod = cookieMethods.get("domain");
         String nameMethod = cookieMethods.get("name");
@@ -353,5 +353,81 @@ public class Utils {
         } else {
             view.setBackgroundDrawable(background);
         }
+    }
+
+    public static Comparator<String> alphanumComparator() {
+        // http://www.davekoelle.com/files/AlphanumComparator.java
+        return new Comparator<String>() {
+
+            private boolean isDigit(char ch) {
+                return ch >= 48 && ch <= 57;
+            }
+
+            private String getChunk(String s, int slength, int marker) {
+                StringBuilder chunk = new StringBuilder();
+                char c = s.charAt(marker);
+                chunk.append(c);
+                marker++;
+                if (isDigit(c)) {
+                    while (marker < slength) {
+                        c = s.charAt(marker);
+                        if (!isDigit(c)) {
+                            break;
+                        }
+                        chunk.append(c);
+                        marker++;
+                    }
+                } else {
+                    while (marker < slength) {
+                        c = s.charAt(marker);
+                        if (isDigit(c)) {
+                            break;
+                        }
+                        chunk.append(c);
+                        marker++;
+                    }
+                }
+                return chunk.toString();
+            }
+
+            @Override
+            public int compare(String s1, String s2) {
+                int thisMarker = 0;
+                int thatMarker = 0;
+                int s1Length = s1.length();
+                int s2Length = s2.length();
+
+                while (thisMarker < s1Length && thatMarker < s2Length) {
+                    String thisChunk = getChunk(s1, s1Length, thisMarker);
+                    thisMarker += thisChunk.length();
+
+                    String thatChunk = getChunk(s2, s2Length, thatMarker);
+                    thatMarker += thatChunk.length();
+
+                    int result;
+                    if (isDigit(thisChunk.charAt(0)) == isDigit(thatChunk.charAt(0))) {
+                        int thisChunkLength = thisChunk.length();
+                        result = thisChunkLength - thatChunk.length();
+                        if (result == 0) {
+                            for (int i = 0; i < thisChunkLength; i++) {
+                                result = thisChunk.charAt(i) - thatChunk.charAt(i);
+                                if (result != 0) {
+                                    return result;
+                                }
+                            }
+                        }
+                    } else {
+                        result = thisChunk.compareTo(thatChunk);
+                    }
+
+                    if (result != 0) {
+                        return result;
+                    }
+                }
+
+                return s1Length - s2Length;
+            }
+        };
+
     }
 }

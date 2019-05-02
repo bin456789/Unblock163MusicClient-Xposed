@@ -9,7 +9,6 @@ import android.net.Uri;
 import android.view.View;
 
 import com.annimon.stream.Stream;
-import com.google.common.collect.Ordering;
 
 import org.jf.dexlib2.DexFileFactory;
 import org.jf.dexlib2.dexbacked.DexBackedClassDef;
@@ -36,7 +35,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
 import java.util.concurrent.ConcurrentHashMap;
-import java.util.regex.Matcher;
 import java.util.regex.Pattern;
 import java.util.zip.ZipEntry;
 import java.util.zip.ZipFile;
@@ -512,30 +510,14 @@ public class CloudMusicPackage {
                 try {
                     Class playerActivitySuperClass = getClazz().getSuperclass();
                     if (playerActivitySuperClass != null) {
-
-                        Pattern pattern = Pattern.compile(String.format("^%s\\$(\\d+)", playerActivitySuperClass.getName()));
-                        List<String> list = getFilteredClasses(pattern, Ordering.natural());
-                        int num = Stream.of(list)
-                                .groupBy(s -> {
-                                    Matcher m = pattern.matcher(s);
-                                    return m.find() ? Integer.parseInt(m.group(1)) : -1;
-                                })
-                                .filter(g -> g.getKey() > -1)
-                                .reduce((x, y) -> {
-                                    if (x.getValue().size() > y.getValue().size()) {
-                                        return x;
-                                    }
-                                    if (x.getKey() > y.getKey()) {
-                                        return x;
-                                    }
-                                    return y;
-                                })
-                                .get().getKey();
-
-                        if (num >= 0) {
-                            likeButtonOnClickMethod = findMethodExact(playerActivitySuperClass.getName() + "$" + num, getClassLoader(), "onClick", View.class);
-                            return likeButtonOnClickMethod;
-                        }
+                        Pattern pattern = Pattern.compile(String.format("^%s\\$\\d+$", playerActivitySuperClass.getName()));
+                        // List<String> list = getFilteredClasses(pattern, Ordering.natural());
+                        List<String> list = getFilteredClasses(pattern, Utils.alphanumComparator());
+                        Class clazz = Stream.of(list)
+                                .map(s -> findClass(s, getClassLoader()))
+                                .filter(c -> Arrays.asList(c.getInterfaces()).contains(View.OnClickListener.class))
+                                .findFirst().get();
+                        likeButtonOnClickMethod = findMethodExact(clazz, "onClick", View.class);
                     }
                 } catch (NoSuchElementException e) {
                     throw new RuntimeException("can't find getLikeButtonOnClickMethod");
