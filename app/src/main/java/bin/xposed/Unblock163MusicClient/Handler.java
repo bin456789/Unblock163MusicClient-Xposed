@@ -78,7 +78,6 @@ public class Handler {
             showToast("歌曲已存在");
 
         } else if (code != 200) {
-            @SuppressWarnings({"unchecked"})
             Map<String, String> map = eapi.getRequestData();
             String raw = Http.post(XAPI + "manipulate", map, true).getResponseText();
             JSONObject json = new JSONObject(raw);
@@ -110,7 +109,6 @@ public class Handler {
         JSONObject originalJson = new JSONObject(originalContent);
         int code = originalJson.getInt("code");
         if (code != 200) {
-            @SuppressWarnings({"unchecked"})
             Map<String, String> map = eapi.getRequestData();
             String raw = Http.post(XAPI + "pub", map, true).getResponseText();
             if (Utils.isJSONValid(raw)) {
@@ -252,6 +250,10 @@ public class Handler {
                         .put("size", preferSong.getSize())
                         .put("type", preferSong.getType())
                         .put("url", preferSong.getUrl());
+
+                if (!preferSong.isFreeTrialFile()) {
+                    oldSongJson.put("freeTrialInfo", null);
+                }
 
                 try {
                     File cacheDir = CloudMusicPackage.NeteaseMusicApplication.getMusicCacheDir();
