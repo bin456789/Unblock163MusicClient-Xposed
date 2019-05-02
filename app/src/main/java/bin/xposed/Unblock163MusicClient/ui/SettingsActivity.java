@@ -79,8 +79,8 @@ public class SettingsActivity extends PreferenceActivity implements OnSharedPref
 
     private void setInfo() {
         findPreference(R.string.modver_key).setSummary(BuildConfig.VERSION_NAME);
-        findPreference(R.string.compatible_appver_key).setSummary("4.3 ~ 6.0");
-        findPreference(R.string.best_appver_key).setSummary("6.0");
+        findPreference(R.string.compatible_appver_key).setSummary("4.3 ~ 6.1");
+        findPreference(R.string.best_appver_key).setSummary("6.1");
 
         setOnTenClickListener(findPreference(R.string.modver_key), this::openGithub);
         setOnTenClickListener(findPreference(R.string.author_key), this::openCoolapk);

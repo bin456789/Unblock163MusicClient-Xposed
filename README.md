@@ -1,5 +1,5 @@
 # Unblock163MusicClient - Xposed
-Compatible with app version 4.3 to 6.0
+Compatible with app version 4.3 to 6.1
 
 
 ## Thanks
