@@ -24,7 +24,7 @@ android {
         minSdkVersion 14
         // target Android P 之后，在安装过程中会对 APP 文件目录实行严格的 SELinux 限制，即使 makeWorldReadable，其他 APP 也无法读取插件的任何配置文件
         targetSdkVersion 27
-        versionCode 32
+        versionCode 33
         versionName = "0.0.${versionCode}"
         archivesBaseName = "${applicationId}-${versionName}"
     }
