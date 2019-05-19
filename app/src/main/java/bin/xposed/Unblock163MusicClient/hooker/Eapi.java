@@ -43,7 +43,7 @@ public class Eapi extends Hooker {
                     String path = uri.getPath().substring("/eapi/".length());
                     String modified = null;
 
-                    if ("song/enhance/player/url".equals(path)) {
+                    if ("song/enhance/player/url".equals(path) || "song/enhance/player/url/v1".equals(path)) {
                         modified = Handler.modifyPlayerOrDownloadApi(original, eapi, "player");
 
                     } else if ("song/enhance/download/url".equals(path)) {

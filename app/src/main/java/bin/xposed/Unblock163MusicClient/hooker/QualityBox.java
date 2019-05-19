@@ -22,7 +22,9 @@ public class QualityBox extends Hooker {
                             boolean hasCopyRight = new CloudMusicPackage.MusicInfo(musicInfo).hasCopyRight();
                             if (!hasCopyRight) {
                                 SpannableString ssOld = (SpannableString) param.args[1];
-                                SpannableString ssNew = new SpannableString(ssOld.toString().replace("付费独享", "下架歌曲"));
+                                SpannableString ssNew = new SpannableString(ssOld.toString()
+                                        .replace("付费独享", "下架歌曲")
+                                        .replace("VIP专享", "下架歌曲 "));
                                 Object[] spans = ssOld.getSpans(0, ssOld.length(), Object.class);
                                 for (Object span : spans) {
                                     ssNew.setSpan(span, ssOld.getSpanStart(span), ssOld.getSpanEnd(span), ssOld.getSpanFlags(span));
