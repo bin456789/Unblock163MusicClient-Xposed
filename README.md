@@ -1,5 +1,7 @@
 # Unblock163MusicClient - Xposed
-Compatible with app version 4.3 to 6.1
+~~Compatible with app version 4.3 to 6.1~~
+
+已弃坑，请使用 [nondanee/UnblockNeteaseMusic](https://github.com/nondanee/UnblockNeteaseMusic) 以及其 [衍生项目](https://github.com/nondanee/UnblockNeteaseMusic/issues/233#issuecomment-530774606)
 
 
 ## Thanks
